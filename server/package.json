@@ -9,6 +9,7 @@
   "author": "Acrimon <joel.wejdenstal@gmail.com>",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "sqlite3": "^4.0.9"
   }
 }
