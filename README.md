@@ -6,10 +6,28 @@ Currently very WIP.
 
 ## Design
 
+### Account
+
+An account consists of 3 parts.
+
+- A unique UUID
+
+- A username
+
+- A password
+
+### Definitions
+
+- Server ID -> A unique ID for each server that is requested from the auth server at startup.
+
+- Token -> A single use auth token that is also coupled with the hash of a server id.
+
 ### Flow of joining a server.
 
-Client: Sends signin request to server and receives a token it can use.
+Client: Sends a request to the gameserver for a hash of its server id.
 
-Client: Sends token along with username to the gameserver.
+Client: Sends signin request to auth server and receives a token it can use.
 
-Gamesever: Validates that the token belongs to that username and allows a game connection.
+Client: Sends token to the gameserver.
+
+Gameserver: Sends a validity check request with the token and its server id, receives the uuid of the player.
