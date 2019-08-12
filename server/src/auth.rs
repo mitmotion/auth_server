@@ -1,10 +1,12 @@
-use parking_lot::Mutex;
-use lazy_static::lazy_static;
-use rusqlite::{params, Connection};
-use crate::util::{Result, wrap_err};
+use crate::util::{wrap_err, Result};
+use auth_common::AuthToken;
+use bcrypt::{hash, verify, DEFAULT_COST};
 use failure::Fail;
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
+use rusqlite::{params, Connection};
+use std::net::Ipv4Addr;
 use time::Timespec;
-use bcrypt::{DEFAULT_COST, hash, verify};
 use uuid::Uuid;
 
 static DB_NAME: &'static str = "data.sl3";
@@ -56,11 +58,13 @@ pub fn register(username: String, password: String) -> Result<()> {
 
     let conn = DB.lock();
 
-    let regres: Result<_> = conn.execute(
-        "INSERT INTO accounts (id, username, phash)
+    let regres: Result<_> = conn
+        .execute(
+            "INSERT INTO accounts (id, username, phash)
                   VALUES (?1, ?2, ?3)",
-        params![id, username, phash],
-    ).map_err(|_| RegisterError::UsernameTaken.into());
+            params![id, username, phash],
+        )
+        .map_err(|_| RegisterError::UsernameTaken.into());
     regres?;
 
     Ok(())
@@ -70,6 +74,12 @@ pub fn register(username: String, password: String) -> Result<()> {
 enum MiscError {
     #[fail(display = "UsernameInvalid")]
     UsernameInvalid,
+
+    #[fail(display = "UsernameInvalid")]
+    UuidInvalid,
+
+    #[fail(display = "InvalidPassword")]
+    InvalidPassword,
 }
 
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
@@ -92,4 +102,47 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
     }
 
     Err(MiscError::UsernameInvalid.into())
+}
+
+fn uuid_to_phash(id: Uuid) -> Result<String> {
+    let id = id.to_hyphenated().to_string();
+    let conn = DB.lock();
+    let mut stmt = wrap_err(conn.prepare("SELECT id, username, phash FROM accounts"))?;
+    let account_iter = stmt.query_map(params![], |row| {
+        Ok(RawAccount {
+            id: row.get(0)?,
+            username: row.get(1)?,
+            phash: row.get(2)?,
+        })
+    })?;
+
+    for account in account_iter {
+        if let Ok(account) = account {
+            if account.id == id {
+                return Ok(account.phash);
+            }
+        }
+    }
+
+    Err(MiscError::UuidInvalid.into())
+}
+
+pub fn generate_token(id: Uuid, password: String, server: Ipv4Addr) -> Result<AuthToken> {
+    let phash = uuid_to_phash(id.clone())?;
+    if verify(password, &phash)? {
+        let token = AuthToken::generate();
+        let key = token.serialize();
+        let user_id = id.to_hyphenated().to_string();
+        let created_at = time::get_time().sec.to_string();
+        let server = server.to_string();
+        let conn = DB.lock();
+        wrap_err(conn.execute(
+            "INSERT INTO keys (key, user_id, created_at, server)
+                      VALUES (?1, ?2, ?3, ?4)",
+            params![key, user_id, created_at, server],
+        ))?;
+        Ok(token)
+    } else {
+        Err(MiscError::InvalidPassword.into())
+    }
 }
