@@ -17,11 +17,11 @@ impl AuthToken {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct SignInData {
+pub struct SignInResponse {
     pub token: AuthToken,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct ValidityCheckData {
+pub struct ValidityCheckResponse {
     pub player_uuid: Uuid,
 }

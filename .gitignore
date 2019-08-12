@@ -1,2 +1,4 @@
 common/target
 common/Cargo.lock
+server/target
+server/data.sl3
