@@ -29,7 +29,7 @@ pub fn prepare_db() -> Result<()> {
 
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS keys (
-                  key             TEXT PRIMARY KEY,
+                  key             TEXT PRIMARY KEY UNIQUE,
                   user_id         TEXT NOT NULL,
                   created_at      TEXT NOT NULL,
                   server          TEXT NOT NULL
@@ -178,6 +178,7 @@ pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
                 let diff = currenttime - t1time;
                 if diff < 15 && addr == t1.server {
                     // token is valid
+                    wrap_err(conn.execute("DELETE FROM keys WHERE key = ?1", params![t1.key]))?;
                     return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
                 }
             }
