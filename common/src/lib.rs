@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AuthToken {
-    unique: u64,
+    pub unique: u64,
 }
 
 impl AuthToken {

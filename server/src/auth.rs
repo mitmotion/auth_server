@@ -46,6 +46,13 @@ struct RawAccount {
     phash: String,
 }
 
+struct RawToken {
+    key: String,
+    user_id: String,
+    created_at: String,
+    server: String,
+}
+
 #[derive(Debug, Fail)]
 enum RegisterError {
     #[fail(display = "UsernameTaken")]
@@ -80,6 +87,9 @@ enum MiscError {
 
     #[fail(display = "InvalidPassword")]
     InvalidPassword,
+
+    #[fail(display = "InvalidToken")]
+    InvalidToken,
 }
 
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
@@ -145,4 +155,34 @@ pub fn generate_token(id: Uuid, password: String, server: Ipv4Addr) -> Result<Au
     } else {
         Err(MiscError::InvalidPassword.into())
     }
+}
+
+pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
+    let addr = client.to_string();
+    let conn = DB.lock();
+    let mut stmt = wrap_err(conn.prepare("SELECT key, user_id, created_at, server FROM keys"))?;
+    let token_iter = stmt.query_map(params![], |row| {
+        Ok(RawToken {
+            key: row.get(0)?,
+            user_id: row.get(1)?,
+            created_at: row.get(2)?,
+            server: row.get(3)?,
+        })
+    })?;
+
+    for t1 in token_iter {
+        if let Ok(t1) = t1 {
+            if t1.key.parse() == Ok(token.unique) {
+                let t1time = t1.created_at.parse::<u64>()?;
+                let currenttime = time::get_time().sec as u64;
+                let diff = currenttime - t1time;
+                if diff < 15 && addr == t1.server {
+                    // token is valid
+                    return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
+                }
+            }
+        }
+    }
+
+    Err(MiscError::InvalidToken.into())
 }
