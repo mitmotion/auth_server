@@ -1,6 +1,10 @@
 mod auth;
 mod util;
 
-fn main() {
+use util::Result;
+
+fn main() -> Result<()> {
+    auth::prepare_db()?;
     println!("Hello, world!");
+    Ok(())
 }
