@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AuthToken {
-    unique: u128,
+    unique: u64,
 }
 
 impl AuthToken {
@@ -13,6 +13,10 @@ impl AuthToken {
         Self {
             unique: rand::random(),
         }
+    }
+
+    pub fn serialize(&self) -> String {
+        self.unique.to_string()
     }
 }
 
