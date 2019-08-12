@@ -22,6 +22,8 @@ An account consists of 3 parts.
 
 ### Flow of joining a server.
 
+Client: Fetches the uuid from its playername.
+
 Client: Sends a sign-in request to the auth server with the IPv4 address of the server and receives a token it can use.
 
 Client: Sends token to the gameserver.
