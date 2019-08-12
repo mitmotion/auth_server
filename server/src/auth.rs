@@ -30,6 +30,7 @@ pub fn prepare_db() -> Result<()> {
                   key             TEXT PRIMARY KEY,
                   user_id         TEXT NOT NULL,
                   created_at      TEXT NOT NULL,
+                  server          TEXT NOT NULL
         )",
         params![],
     ))?;
