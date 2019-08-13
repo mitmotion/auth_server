@@ -5,5 +5,5 @@ services:
     ports:
       - "19253:19253"
     environment:
-    - POSTGRES_PASSWORD=supersecret1337
-    - POSTGRES_DB=auth
+      - POSTGRES_PASSWORD=supersecret1337
+      - POSTGRES_DB=auth
