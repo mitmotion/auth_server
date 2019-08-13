@@ -10,8 +10,12 @@ use uuid::Uuid;
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager> = {
         let dsn = format!("postgres://postgres:supersecret1337@db");
-        let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None).expect("failed to create manager");
-        r2d2::Pool::builder().max_size(16).build(manager).expect("failed to create pool")
+        let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None)
+            .expect("failed to create manager");
+        r2d2::Pool::builder()
+            .max_size(16)
+            .build(manager)
+            .expect("failed to create pool")
     };
 }
 
@@ -21,7 +25,7 @@ pub fn prepare_db() -> Result<()> {
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
                   id              TEXT PRIMARY KEY UNIQUE,
-                  username        TEXT NOT NULL,
+                  username        TEXT NOT NULL UNIQUE,
                   phash           TEXT NOT NULL
         )",
         &[],
@@ -68,7 +72,7 @@ pub fn register(username: String, password: String) -> Result<()> {
     let regres: Result<_> = conn
         .execute(
             "INSERT INTO accounts (id, username, phash)
-                  VALUES (?1, ?2, ?3)",
+                  VALUES ($1, $2, $3)",
             &[&id, &username, &phash],
         )
         .map_err(|_| RegisterError::UsernameTaken.into());
@@ -95,7 +99,7 @@ enum MiscError {
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let conn = DB.get().unwrap();
 
-    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
+    let query = conn.query("SELECT (id, username, phash) FROM accounts", &[])?;
 
     for row in &query {
         let account = RawAccount {
@@ -115,7 +119,7 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
 fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
     let conn = DB.get().unwrap();
-    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
+    let query = conn.query("SELECT (id, username, phash) FROM accounts", &[])?;
     for row in &query {
         let account = RawAccount {
             id: row.get(0),
@@ -143,7 +147,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
         let conn = DB.get().unwrap();
         wrap_err(conn.execute(
             "INSERT INTO keys (key, user_id, created_at, server)
-                      VALUES (?1, ?2, ?3, ?4)",
+                      VALUES ($1, $2, $3, $4)",
             &[&key, &user_id, &created_at, &server],
         ))?;
         Ok(token)
@@ -155,7 +159,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
     let conn = DB.get().unwrap();
-    let query = conn.query("SELECT key, user_id, created_at, server FROM keys", &[])?;
+    let query = conn.query("SELECT (key, user_id, created_at, server) FROM keys", &[])?;
 
     for row in &query {
         let t1 = RawToken {
@@ -171,7 +175,7 @@ pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
             let diff = currenttime - t1time;
             if diff < 15 && addr == t1.server {
                 // token is valid
-                wrap_err(conn.execute("DELETE FROM keys WHERE key = ?1", &[&t1.key]))?;
+                wrap_err(conn.execute("DELETE FROM keys WHERE key = $1", &[&t1.key]))?;
                 return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
             }
         }
