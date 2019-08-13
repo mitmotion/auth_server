@@ -1,9 +1,12 @@
-version: "3"
+version: "3.1"
 services:
   web:
     image: auth-server
     ports:
       - "19253:19253"
+
+  db:
+    image: postgres:11
     environment:
-      - POSTGRES_PASSWORD=supersecret1337
-      - POSTGRES_DB=auth
+      POSTGRES_PASSWORD: supersecret1337
+      POSTGRES_DB: auth
