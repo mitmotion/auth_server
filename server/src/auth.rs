@@ -60,7 +60,7 @@ enum RegisterError {
 }
 
 pub fn register(username: String, password: String) -> Result<()> {
-    let phash = hash(password, 2)?;
+    let phash = hash(password, 4)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
     let conn = DB.get().unwrap();
