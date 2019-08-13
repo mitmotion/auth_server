@@ -6,10 +6,15 @@ use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use std::net::Ipv4Addr;
 use uuid::Uuid;
+use std::env;
+
+fn db_host() -> String {
+    env::var("DB_PROVIDER").unwrap_or("localhost".to_string())
+}
 
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager> = {
-        let dsn = format!("postgres://postgres:supersecret1337@db");
+        let dsn = format!("postgres://postgres:supersecret1337@{}");
         let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None)
             .expect("failed to create manager");
         r2d2::Pool::builder()
