@@ -3,23 +3,26 @@ use auth_common::AuthToken;
 use bcrypt::{hash, verify};
 use failure::Fail;
 use lazy_static::lazy_static;
-use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
+use postgres::NoTls;
+use r2d2_postgres::PostgresConnectionManager;
+use std::env;
 use std::net::Ipv4Addr;
-
 use uuid::Uuid;
 
-static DB_NAME: &'static str = "data.sl3";
+fn db_host() -> String {
+    env::var("AUTH_DB_HOST").unwrap_or("localhost".to_string())
+}
 
 lazy_static! {
-    static ref DB: r2d2::Pool<SqliteConnectionManager> = {
-        let manager = SqliteConnectionManager::file(DB_NAME);
+    static ref DB: r2d2::Pool<PostgresConnectionManager<NoTls>> = {
+        let dsn = format!("postgres://postgres@{}:5433/auth", db_host());
+        let manager = PostgresConnectionManager::new(dsn.parse().unwrap(), NoTls);
         r2d2::Pool::new(manager).unwrap()
     };
 }
 
 pub fn prepare_db() -> Result<()> {
-    let conn = DB.get().unwrap();
+    let mut conn = DB.get().unwrap();
 
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
@@ -27,7 +30,7 @@ pub fn prepare_db() -> Result<()> {
                   username        TEXT NOT NULL,
                   phash           TEXT NOT NULL
         )",
-        params![],
+        &[],
     ))?;
 
     wrap_err(conn.execute(
@@ -37,7 +40,7 @@ pub fn prepare_db() -> Result<()> {
                   created_at      TEXT NOT NULL,
                   server          TEXT NOT NULL
         )",
-        params![],
+        &[],
     ))?;
 
     Ok(())
@@ -63,16 +66,16 @@ enum RegisterError {
 }
 
 pub fn register(username: String, password: String) -> Result<()> {
-    let phash = hash(password, 4)?;
+    let phash = hash(password, 2)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
-    let conn = DB.get().unwrap();
+    let mut conn = DB.get().unwrap();
 
     let regres: Result<_> = conn
         .execute(
             "INSERT INTO accounts (id, username, phash)
                   VALUES (?1, ?2, ?3)",
-            params![id, username, phash],
+            &[&id, &username, &phash],
         )
         .map_err(|_| RegisterError::UsernameTaken.into());
     regres?;
@@ -96,21 +99,19 @@ enum MiscError {
 }
 
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
-    let conn = DB.get().unwrap();
-    let mut stmt = wrap_err(conn.prepare("SELECT id, username, phash FROM accounts"))?;
-    let account_iter = stmt.query_map(params![], |row| {
-        Ok(RawAccount {
-            id: row.get(0)?,
-            username: row.get(1)?,
-            phash: row.get(2)?,
-        })
-    })?;
+    let mut conn = DB.get().unwrap();
 
-    for account in account_iter {
-        if let Ok(account) = account {
-            if account.username == username {
-                return Ok(wrap_err(Uuid::parse_str(&account.id))?);
-            }
+    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
+
+    for row in query {
+        let account = RawAccount {
+            id: row.get(0),
+            username: row.get(1),
+            phash: row.get(2),
+        };
+
+        if account.username == username {
+            return Ok(wrap_err(Uuid::parse_str(&account.id))?);
         }
     }
 
@@ -119,21 +120,17 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
 
 fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
-    let conn = DB.get().unwrap();
-    let mut stmt = wrap_err(conn.prepare("SELECT id, username, phash FROM accounts"))?;
-    let account_iter = stmt.query_map(params![], |row| {
-        Ok(RawAccount {
-            id: row.get(0)?,
-            username: row.get(1)?,
-            phash: row.get(2)?,
-        })
-    })?;
+    let mut conn = DB.get().unwrap();
+    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
+    for row in query {
+        let account = RawAccount {
+            id: row.get(0),
+            username: row.get(1),
+            phash: row.get(2),
+        };
 
-    for account in account_iter {
-        if let Ok(account) = account {
-            if account.id == id {
-                return Ok(account.phash);
-            }
+        if account.id == id {
+            return Ok(account.phash);
         }
     }
 
@@ -149,11 +146,11 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
         let user_id = id.to_hyphenated().to_string();
         let created_at = time::get_time().sec.to_string();
         let server = server.to_string();
-        let conn = DB.get().unwrap();
+        let mut conn = DB.get().unwrap();
         wrap_err(conn.execute(
             "INSERT INTO keys (key, user_id, created_at, server)
                       VALUES (?1, ?2, ?3, ?4)",
-            params![key, user_id, created_at, server],
+            &[&key, &user_id, &created_at, &server],
         ))?;
         Ok(token)
     } else {
@@ -163,28 +160,25 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
-    let conn = DB.get().unwrap();
-    let mut stmt = wrap_err(conn.prepare("SELECT key, user_id, created_at, server FROM keys"))?;
-    let token_iter = stmt.query_map(params![], |row| {
-        Ok(RawToken {
-            key: row.get(0)?,
-            user_id: row.get(1)?,
-            created_at: row.get(2)?,
-            server: row.get(3)?,
-        })
-    })?;
+    let mut conn = DB.get().unwrap();
+    let query = conn.query("SELECT key, user_id, created_at, server FROM keys", &[])?;
 
-    for t1 in token_iter {
-        if let Ok(t1) = t1 {
-            if t1.key.parse() == Ok(token.unique) {
-                let t1time = t1.created_at.parse::<u64>()?;
-                let currenttime = time::get_time().sec as u64;
-                let diff = currenttime - t1time;
-                if diff < 15 && addr == t1.server {
-                    // token is valid
-                    wrap_err(conn.execute("DELETE FROM keys WHERE key = ?1", params![t1.key]))?;
-                    return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
-                }
+    for row in query {
+        let t1 = RawToken {
+            key: row.get(0),
+            user_id: row.get(1),
+            created_at: row.get(2),
+            server: row.get(3),
+        };
+
+        if t1.key.parse() == Ok(token.unique) {
+            let t1time = t1.created_at.parse::<u64>()?;
+            let currenttime = time::get_time().sec as u64;
+            let diff = currenttime - t1time;
+            if diff < 15 && addr == t1.server {
+                // token is valid
+                wrap_err(conn.execute("DELETE FROM keys WHERE key = ?1", &[&t1.key]))?;
+                return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
             }
         }
     }
