@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager> = {
-        let dsn = format!("postgres://postgres:supersecret1337@0.0.0.0");
+        let dsn = format!("postgres://postgres:supersecret1337@db");
         let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None).expect("failed to create manager");
         r2d2::Pool::builder().max_size(16).build(manager).expect("failed to create pool")
     };
