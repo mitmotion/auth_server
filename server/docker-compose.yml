@@ -4,7 +4,6 @@ services:
     image: auth-server
     ports:
       - "19253:19253"
-
   db:
     image: postgres:11
     command: postgres -c 'max_connections=17'
