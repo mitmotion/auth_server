@@ -5,17 +5,12 @@ use failure::Fail;
 use lazy_static::lazy_static;
 use postgres::NoTls;
 use r2d2_postgres::PostgresConnectionManager;
-use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
 
-fn db_host() -> String {
-    env::var("AUTH_DB_HOST").unwrap_or("localhost".to_string())
-}
-
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager<NoTls>> = {
-        let dsn = format!("host={} dbname=auth sslmode=disable password=supersecret1337", db_host());
+        let dsn = format!("host=localhost dbname=auth sslmode=disable password=supersecret1337", db_host());
         let manager = PostgresConnectionManager::new(dsn.parse().unwrap(), NoTls);
         r2d2::Pool::new(manager).unwrap()
     };
