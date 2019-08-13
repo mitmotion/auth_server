@@ -137,7 +137,8 @@ fn uuid_to_phash(id: Uuid) -> Result<String> {
     Err(MiscError::UuidInvalid.into())
 }
 
-pub fn generate_token(id: Uuid, password: String, server: Ipv4Addr) -> Result<AuthToken> {
+pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> Result<AuthToken> {
+    let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id.clone())?;
     if verify(password, &phash)? {
         let token = AuthToken::generate();

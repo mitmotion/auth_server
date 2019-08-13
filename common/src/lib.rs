@@ -18,6 +18,11 @@ impl AuthToken {
     pub fn serialize(&self) -> String {
         self.unique.to_string()
     }
+
+    pub fn deserialize(s: &str) -> Self {
+        let n = s.parse().unwrap();
+        Self { unique: n }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -27,5 +32,10 @@ pub struct SignInResponse {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ValidityCheckResponse {
-    pub player_uuid: Uuid,
+    pub uuid: Uuid,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct UuidLookupResponse {
+    pub uuid: Uuid,
 }
