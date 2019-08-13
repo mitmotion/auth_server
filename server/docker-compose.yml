@@ -7,5 +7,6 @@ services:
 
   db:
     image: postgres:11
+    command: postgres -c 'max_connections=32'
     environment:
       POSTGRES_PASSWORD: supersecret1337
