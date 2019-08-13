@@ -9,4 +9,3 @@ services:
     image: postgres:11
     environment:
       POSTGRES_PASSWORD: supersecret1337
-      POSTGRES_DB: auth
