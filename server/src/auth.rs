@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use parking_lot::Mutex;
 use rusqlite::{params, Connection};
 use std::net::Ipv4Addr;
-use time::Timespec;
+
 use uuid::Uuid;
 
 static DB_NAME: &'static str = "data.sl3";
