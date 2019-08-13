@@ -39,10 +39,12 @@ fn handler(req: &Request) -> Response {
 }
 
 fn err_handler(t: Result<Response>) -> Response {
-    if let Ok(r) = t {
-        r
-    } else {
-        Response::empty_404()
+    match t {
+        Ok(r) => r,
+        Err(why) => {
+            println!("{:?}", why);
+            Response::empty_404()
+        }
     }
 }
 

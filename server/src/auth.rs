@@ -1,10 +1,10 @@
 use crate::util::{wrap_err, Result};
 use auth_common::AuthToken;
-use bcrypt::{hash, verify, DEFAULT_COST};
+use bcrypt::{hash, verify};
 use failure::Fail;
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
-use rusqlite::{params, Connection};
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::params;
 use std::net::Ipv4Addr;
 
 use uuid::Uuid;
@@ -12,11 +12,14 @@ use uuid::Uuid;
 static DB_NAME: &'static str = "data.sl3";
 
 lazy_static! {
-    static ref DB: Mutex<Connection> = Mutex::new(Connection::open(DB_NAME).unwrap());
+    static ref DB: r2d2::Pool<SqliteConnectionManager> = {
+        let manager = SqliteConnectionManager::file(DB_NAME);
+        r2d2::Pool::new(manager).unwrap()
+    };
 }
 
 pub fn prepare_db() -> Result<()> {
-    let conn = DB.lock();
+    let conn = DB.get().unwrap();
 
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
@@ -60,10 +63,10 @@ enum RegisterError {
 }
 
 pub fn register(username: String, password: String) -> Result<()> {
-    let phash = hash(password, DEFAULT_COST)?;
+    let phash = hash(password, 4)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
-    let conn = DB.lock();
+    let conn = DB.get().unwrap();
 
     let regres: Result<_> = conn
         .execute(
@@ -93,7 +96,7 @@ enum MiscError {
 }
 
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
-    let conn = DB.lock();
+    let conn = DB.get().unwrap();
     let mut stmt = wrap_err(conn.prepare("SELECT id, username, phash FROM accounts"))?;
     let account_iter = stmt.query_map(params![], |row| {
         Ok(RawAccount {
@@ -116,7 +119,7 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
 
 fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
-    let conn = DB.lock();
+    let conn = DB.get().unwrap();
     let mut stmt = wrap_err(conn.prepare("SELECT id, username, phash FROM accounts"))?;
     let account_iter = stmt.query_map(params![], |row| {
         Ok(RawAccount {
@@ -146,7 +149,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
         let user_id = id.to_hyphenated().to_string();
         let created_at = time::get_time().sec.to_string();
         let server = server.to_string();
-        let conn = DB.lock();
+        let conn = DB.get().unwrap();
         wrap_err(conn.execute(
             "INSERT INTO keys (key, user_id, created_at, server)
                       VALUES (?1, ?2, ?3, ?4)",
@@ -160,7 +163,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
-    let conn = DB.lock();
+    let conn = DB.get().unwrap();
     let mut stmt = wrap_err(conn.prepare("SELECT key, user_id, created_at, server FROM keys"))?;
     let token_iter = stmt.query_map(params![], |row| {
         Ok(RawToken {
