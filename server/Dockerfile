@@ -1,7 +1,6 @@
 FROM rust:1.36
 WORKDIR /opt/appbuild
 COPY . .
-COPY ../common ../common
 RUN cargo build
 
 FROM debian:10
