@@ -15,7 +15,7 @@ fn db_host() -> String {
 
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager<NoTls>> = {
-        let dsn = format!("host={} dbname=auth sslmode=disable", db_host());
+        let dsn = format!("host={} dbname=auth sslmode=disable password=supersecret1337", db_host());
         let manager = PostgresConnectionManager::new(dsn.parse().unwrap(), NoTls);
         r2d2::Pool::new(manager).unwrap()
     };
