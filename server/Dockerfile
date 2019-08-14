@@ -9,6 +9,6 @@ RUN /bin/bash -c "source $HOME/.cargo/env; cargo build --release --target x86_64
 
 FROM alpine:3.8
 WORKDIR /opt/app
-COPY --from=0 /opt/appbuild/target/release/auth-server .
+COPY --from=0 /opt/appbuild/target/x86_64-unknown-linux-musl/release/auth-server .
 EXPOSE 19253
 CMD ["./auth-server"]
