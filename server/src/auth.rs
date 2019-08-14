@@ -15,6 +15,10 @@ fn db_host() -> String {
     env::var("DB_PROVIDER").unwrap_or("localhost".to_string())
 }
 
+fn cache_host() -> String {
+    env::var("CACHE_PROVIDER").unwrap_or("localhost".to_string())
+}
+
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager> = {
         let dsn = format!("postgres://postgres:supersecret1337@{}", db_host());
@@ -26,7 +30,8 @@ lazy_static! {
             .expect("failed to create pool")
     };
     static ref CACHE: r2d2::Pool<RedisConnectionManager> = {
-        let manager = RedisConnectionManager::new("redis://cache").unwrap();
+        let dsn = format!("redis://{}", cache_host());
+        let manager = RedisConnectionManager::new(dsn.as_str()).unwrap();
         r2d2::Pool::builder()
             .max_size(16)
             .build(manager)
