@@ -29,19 +29,19 @@ pub fn prepare_db() -> Result<()> {
 
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
-                  id              TEXT PRIMARY KEY UNIQUE,
-                  username        TEXT NOT NULL UNIQUE,
-                  phash           TEXT NOT NULL
+                  id              VARCHAR PRIMARY KEY UNIQUE,
+                  username        VARCHAR NOT NULL UNIQUE,
+                  phash           VARCHAR NOT NULL
         )",
         &[],
     ))?;
 
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS keys (
-                  key             TEXT PRIMARY KEY UNIQUE,
-                  user_id         TEXT NOT NULL,
-                  created_at      TEXT NOT NULL,
-                  server          TEXT NOT NULL
+                  key             VARCHAR PRIMARY KEY UNIQUE,
+                  user_id         VARCHAR NOT NULL,
+                  created_at      VARCHAR NOT NULL,
+                  server          VARCHAR NOT NULL
         )",
         &[],
     ))?;
