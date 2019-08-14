@@ -16,3 +16,4 @@ services:
       POSTGRES_PASSWORD: supersecret1337
   cache:
     image: redis:5-alpine
+    command: [sh, -c, "rm -f /data/dump.rdb && redis-server"]
