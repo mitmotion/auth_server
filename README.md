@@ -12,7 +12,7 @@ An account consists of 3 parts.
 
 - A unique UUID
 
-- A username
+- A unique username
 
 - A password
 
