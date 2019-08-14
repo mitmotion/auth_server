@@ -104,13 +104,13 @@ enum MiscError {
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let conn = DB.get().unwrap();
 
-    let query = conn.query("SELECT (id, username, phash) FROM accounts", &[])?;
+    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
 
     for row in &query {
         let account = RawAccount {
-            id: row.get(0),
-            username: row.get(1),
-            phash: row.get(2),
+            id: row.get("id"),
+            username: row.get("username"),
+            phash: row.get("phash"),
         };
 
         if account.username == username {
