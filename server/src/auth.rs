@@ -124,12 +124,12 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
 fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
     let conn = DB.get().unwrap();
-    let query = conn.query("SELECT (id, username, phash) FROM accounts", &[])?;
+    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
     for row in &query {
         let account = RawAccount {
-            id: row.get(0),
-            username: row.get(1),
-            phash: row.get(2),
+            id: row.get("id"),
+            username: row.get("username"),
+            phash: row.get("phash"),
         };
 
         if account.id == id {
@@ -164,14 +164,14 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
     let conn = DB.get().unwrap();
-    let query = conn.query("SELECT (key, user_id, created_at, server) FROM keys", &[])?;
+    let query = conn.query("SELECT key, user_id, created_at, server FROM keys", &[])?;
 
     for row in &query {
         let t1 = RawToken {
-            key: row.get(0),
-            user_id: row.get(1),
-            created_at: row.get(2),
-            server: row.get(3),
+            key: row.get("key"),
+            user_id: row.get("user_id"),
+            created_at: row.get("created_at"),
+            server: row.get("server"),
         };
 
         if t1.key.parse() == Ok(token.unique) {
