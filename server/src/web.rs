@@ -72,6 +72,7 @@ fn handler_api_v1_signin(req: &Request) -> Result<Response> {
     let username = get_field(req, "username")?;
     let password = get_field(req, "password")?;
     let server = get_field(req, "server")?.parse()?;
+    println!("username {}; password {}", username, password);
     let token = auth::generate_token(username, password, server)?;
     let response = SignInResponse { token };
     Ok(Response::json(&response))
