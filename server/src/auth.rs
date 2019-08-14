@@ -185,7 +185,7 @@ pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
                     return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
                 }
             } else {
-                println!("server from unknown address attempted to verify token, something is up");
+                println!("server from unknown address attempted to verify token, something is up. uaddr = {}", addr);
             }
         }
     }
