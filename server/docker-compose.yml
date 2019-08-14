@@ -1,7 +1,7 @@
 version: "3.1"
 services:
   auth:
-    image: auth-server
+    image: auth-server:latest
     ports:
       - "19253:19253"
     environment:
@@ -13,3 +13,5 @@ services:
       - "/my/own/datadir:/var/lib/postgresql/data"
     environment:
       POSTGRES_PASSWORD: supersecret1337
+  cache:
+    image: redis:5

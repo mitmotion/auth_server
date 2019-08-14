@@ -4,6 +4,9 @@ use bcrypt::{hash, verify};
 use failure::Fail;
 use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use r2d2_redis::RedisConnectionManager;
+use redis::Commands;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
@@ -17,6 +20,13 @@ lazy_static! {
         let dsn = format!("postgres://postgres:supersecret1337@{}", db_host());
         let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None)
             .expect("failed to create manager");
+        r2d2::Pool::builder()
+            .max_size(16)
+            .build(manager)
+            .expect("failed to create pool")
+    };
+    static ref CACHE: r2d2::Pool<RedisConnectionManager> = {
+        let manager = RedisConnectionManager::new("redis://cache").unwrap();
         r2d2::Pool::builder()
             .max_size(16)
             .build(manager)
@@ -36,16 +46,6 @@ pub fn prepare_db() -> Result<()> {
         &[],
     ))?;
 
-    wrap_err(conn.execute(
-        "CREATE TABLE IF NOT EXISTS keys (
-                  key             VARCHAR PRIMARY KEY UNIQUE,
-                  user_id         VARCHAR NOT NULL,
-                  created_at      VARCHAR NOT NULL,
-                  server          VARCHAR NOT NULL
-        )",
-        &[],
-    ))?;
-
     Ok(())
 }
 
@@ -55,10 +55,10 @@ struct RawAccount {
     phash: String,
 }
 
-struct RawToken {
-    key: String,
-    user_id: String,
-    created_at: String,
+#[derive(Serialize, Deserialize)]
+struct TokenData {
+    user_id: Uuid,
+    created_at: i64,
     server: String,
 }
 
@@ -146,15 +146,18 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     if verify(password, &phash)? {
         let token = AuthToken::generate();
         let key = token.serialize();
-        let user_id = id.to_hyphenated().to_string();
-        let created_at = time::get_time().sec.to_string();
+        let user_id = id;
+        let created_at = time::get_time().sec;
         let server = server.to_string();
-        let conn = DB.get().unwrap();
-        wrap_err(conn.execute(
-            "INSERT INTO keys (key, user_id, created_at, server)
-                      VALUES ($1, $2, $3, $4)",
-            &[&key, &user_id, &created_at, &server],
-        ))?;
+        let mut conn = CACHE.get().unwrap();
+        let tokendata = TokenData {
+            user_id,
+            created_at,
+            server,
+        };
+        let tokendata = bincode::serialize(&tokendata)?;
+        conn.set(&key, tokendata)?;
+        conn.expire(&key, 60)?;
         Ok(token)
     } else {
         Err(MiscError::InvalidPassword.into())
@@ -163,31 +166,23 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
-    let conn = DB.get().unwrap();
-    let query = conn.query("SELECT key, user_id, created_at, server FROM keys", &[])?;
-
-    for row in &query {
-        let t1 = RawToken {
-            key: row.get("key"),
-            user_id: row.get("user_id"),
-            created_at: row.get("created_at"),
-            server: row.get("server"),
-        };
-
-        if t1.key.parse() == Ok(token.unique) {
-            let t1time = t1.created_at.parse::<i64>()?;
-            let currenttime = time::get_time().sec;
-            let diff = currenttime - t1time;
-            if addr == t1.server {
-                if diff < 60 {
-                    // token is valid
-                    wrap_err(conn.execute("DELETE FROM keys WHERE key = $1", &[&t1.key]))?;
-                    return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
-                }
-            } else {
-                println!("server from unknown address attempted to verify token, something is up. uaddr = {}", addr);
-            }
+    let key = token.serialize();
+    let mut conn = CACHE.get().unwrap();
+    let tokendataraw: Vec<u8> = conn.get(key)?;
+    let t1: TokenData = bincode::deserialize(&tokendataraw)?;
+    let t1time = t1.created_at;
+    let currenttime = time::get_time().sec;
+    let diff = currenttime - t1time;
+    if addr == t1.server {
+        if diff < 60 {
+            // token is valid
+            return Ok(t1.user_id);
         }
+    } else {
+        println!(
+            "server from unknown address attempted to verify token, something is up. uaddr = {}",
+            addr
+        );
     }
 
     Err(MiscError::InvalidToken.into())
