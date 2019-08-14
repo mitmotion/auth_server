@@ -7,7 +7,7 @@ WORKDIR /opt/appbuild
 COPY . .
 RUN /bin/bash -c "source $HOME/.cargo/env; cargo build --release --target x86_64-unknown-linux-musl"
 
-FROM alpine:3.8
+FROM scratch
 WORKDIR /opt/app
 COPY --from=0 /opt/appbuild/target/x86_64-unknown-linux-musl/release/auth-server .
 EXPOSE 19253
