@@ -11,7 +11,7 @@ services:
     image: postgres:11-alpine
     command: postgres -c 'max_connections=17'
     volumes:
-      - "/my/own/datadir:/var/lib/postgresql/data"
+      - "db:/var/lib/postgresql/data"
     environment:
       POSTGRES_PASSWORD: supersecret1337
   cache:
