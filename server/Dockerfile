@@ -1,4 +1,7 @@
-FROM rust:1.36
+FROM debian:10
+apt-get update && apt-get upgrade
+apt-get install -y gcc gcc-multilib make musl-tools
+curl https://sh.rustup.rs -sSf | sh -s -- -y
 RUN rustup target add x86_64-unknown-linux-musl
 WORKDIR /opt/appbuild
 COPY . .
