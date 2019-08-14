@@ -175,13 +175,17 @@ pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
         };
 
         if t1.key.parse() == Ok(token.unique) {
-            let t1time = t1.created_at.parse::<u64>()?;
-            let currenttime = time::get_time().sec as u64;
+            let t1time = t1.created_at.parse::<i64>()?;
+            let currenttime = time::get_time().sec;
             let diff = currenttime - t1time;
-            if diff < 15 && addr == t1.server {
-                // token is valid
-                wrap_err(conn.execute("DELETE FROM keys WHERE key = $1", &[&t1.key]))?;
-                return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
+            if addr == t1.server {
+                if diff < 60 {
+                    // token is valid
+                    wrap_err(conn.execute("DELETE FROM keys WHERE key = $1", &[&t1.key]))?;
+                    return Ok(wrap_err(Uuid::parse_str(&t1.user_id))?);
+                }
+            } else {
+                println!("server from unknown address attempted to verify token, something is up");
             }
         }
     }
