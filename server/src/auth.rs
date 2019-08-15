@@ -99,6 +99,9 @@ enum RegisterError {
 }
 
 pub fn register(username: String, password: String) -> Result<()> {
+    let username = ensure_within_len(username, 16)?;
+    let username = ensure_valid_text(username)?;
+    let password = ensure_within_len(password, 64)?;
     let phash = hash(password)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
