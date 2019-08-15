@@ -8,6 +8,17 @@ pub struct AuthToken {
     pub unique: u64,
 }
 
+impl std::str::FromStr for AuthToken {
+    type Err = std::num::ParseIntError;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.parse::<u64>() {
+            Ok(s) => Ok(AuthToken { unique: s }),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 impl AuthToken {
     pub fn generate() -> Self {
         Self {

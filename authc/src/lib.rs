@@ -9,13 +9,10 @@ fn resolve_provider() -> String {
 }
 
 pub enum AuthClientError {
-    GenericError,
-}
-
-impl<E: std::error::Error> From<E> for AuthClientError {
-    fn from(_error: E) -> Self {
-        AuthClientError::GenericError
-    }
+    // Server did not return 200-299 StatusCode.
+    ServerError(reqwest::StatusCode),
+    RequestError(reqwest::Error),
+    JsonError(serde_json::Error),
 }
 
 pub struct AuthClient {
@@ -47,7 +44,7 @@ impl AuthClient {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(AuthClientError::GenericError)
+            Err(AuthClientError::ServerError(resp.status()))
         }
     }
 
@@ -60,7 +57,7 @@ impl AuthClient {
             let data: UuidLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
-            Err(AuthClientError::GenericError)
+            Err(AuthClientError::ServerError(resp.status()))
         }
     }
 
@@ -89,7 +86,7 @@ impl AuthClient {
             let data: SignInResponse = serde_json::from_str(body.as_str())?;
             Ok(data.token)
         } else {
-            Err(AuthClientError::GenericError)
+            Err(AuthClientError::ServerError(resp.status()))
         }
     }
 
@@ -103,7 +100,30 @@ impl AuthClient {
             let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
-            Err(AuthClientError::GenericError)
+            Err(AuthClientError::ServerError(resp.status()))
         }
+    }
+}
+
+
+impl std::fmt::Display for AuthClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            AuthClientError::ServerError(code) => write!(f, "Server returned {}", code),
+            AuthClientError::RequestError(err) => write!(f, "Request failed {}", err),
+            AuthClientError::JsonError(err) => write!(f, "failed json serialisation/deserialisation {}", err),
+        }
+    }
+}
+
+impl From<reqwest::Error> for AuthClientError {
+    fn from(err: reqwest::Error) -> Self {
+        AuthClientError::RequestError(err)
+    }
+}
+
+impl From<serde_json::Error> for AuthClientError {
+    fn from(err: serde_json::Error) -> Self {
+        AuthClientError::JsonError(err)
     }
 }
