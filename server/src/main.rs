@@ -1,6 +1,7 @@
 mod auth;
 mod util;
 mod web;
+mod ezh;
 
 use util::Result;
 
