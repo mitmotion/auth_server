@@ -22,12 +22,18 @@ fn main() {
         ("login", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
             let password = get_arg(&args, "password", "Please specify the password.");
-            let server: Ipv4Addr = match get_arg(&args, "server", "Please specify the server you want to join.").parse() {
+            let server: Ipv4Addr = match get_arg(
+                &args,
+                "server",
+                "Please specify the server you want to join.",
+            )
+            .parse()
+            {
                 Ok(addr) => addr,
                 Err(e) => exit_with(format!("failed to parse server address: {}", e)),
             };
             let auth = set_auth_server(&args);
-            
+
             match auth.sign_in(&username, &password, server) {
                 Ok(token) => {
                     println!("Auth Token: {}", token.serialize());
@@ -38,7 +44,7 @@ fn main() {
         ("uuid", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
             let auth = set_auth_server(&args);
-            
+
             match auth.username_to_uuid(&username) {
                 Ok(id) => {
                     println!("UUID of {}: {}", username, id);
@@ -47,12 +53,13 @@ fn main() {
             }
         }
         ("validate", Some(args)) => {
-            let token: AuthToken = match get_arg(&args, "token", "Please specify the token to verify.").parse() {
-                Ok(token) => token,
-                Err(e) => exit_with(format!("failed to parse token: {}", e)),
-            };
+            let token: AuthToken =
+                match get_arg(&args, "token", "Please specify the token to verify.").parse() {
+                    Ok(token) => token,
+                    Err(e) => exit_with(format!("failed to parse token: {}", e)),
+                };
             let auth = set_auth_server(&args);
-            
+
             match auth.validate(token) {
                 Ok(id) => {
                     println!("Successfully identified login token for user {}", id);
@@ -70,16 +77,11 @@ fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
     if let Some(server) = args.value_of("auth") {
         std::env::set_var("VELOREN_AUTH_PROVIDER", server);
     }
-    
+
     AuthClient::new()
 }
 
-
-fn get_arg<T: std::fmt::Display>(
-    args: &clap::ArgMatches,
-    arg: T,
-    error_msg: T,
-) -> String
+fn get_arg<T: std::fmt::Display>(args: &clap::ArgMatches, arg: T, error_msg: T) -> String
 where
     T: std::convert::AsRef<str>,
 {

@@ -105,13 +105,14 @@ impl AuthClient {
     }
 }
 
-
 impl std::fmt::Display for AuthClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             AuthClientError::ServerError(code) => write!(f, "Server returned {}", code),
             AuthClientError::RequestError(err) => write!(f, "Request failed {}", err),
-            AuthClientError::JsonError(err) => write!(f, "failed json serialisation/deserialisation {}", err),
+            AuthClientError::JsonError(err) => {
+                write!(f, "failed json serialisation/deserialisation {}", err)
+            }
         }
     }
 }
