@@ -1,6 +1,2 @@
-common/target
-common/Cargo.lock
-server/target
-server/data.sl3
-authc/target
-authc/Cargo.lock
+/target
+**/*.rs.bk
