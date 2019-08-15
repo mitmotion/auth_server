@@ -1,6 +1,6 @@
 use crate::util::{wrap_err, Result};
 use auth_common::AuthToken;
-use bcrypt::{hash, verify};
+use ezh::{hash as sechash, verify as secverify};
 use failure::Fail;
 use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
@@ -102,7 +102,7 @@ pub fn register(username: String, password: String) -> Result<()> {
     let username = ensure_within_len(username, 16)?;
     let username = ensure_valid_text(username)?;
     let password = ensure_within_len(password, 64)?;
-    let phash = hash(password)?;
+    let phash = sechash(password)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
     let conn = DB.get().unwrap();
@@ -181,7 +181,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     let password = ensure_within_len(password, 64)?;
     let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id.clone())?;
-    if verify(password, &phash)? {
+    if secverify(password, &phash)? {
         let token = AuthToken::generate();
         let key = token.serialize();
         let user_id = id;
