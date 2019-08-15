@@ -1,6 +1,6 @@
 use crate::util::{wrap_err, Result};
 use auth_common::AuthToken;
-use crate::ezh::{hash, verify};
+use bcrypt::{hash, verify};
 use failure::Fail;
 use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
