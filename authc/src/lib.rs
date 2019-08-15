@@ -31,15 +31,21 @@ impl AuthClient {
     pub fn register(
         &self,
         username: impl AsRef<str>,
+        email: impl AsRef<str>,
         password: impl AsRef<str>,
     ) -> Result<(), AuthClientError> {
         let username = username.as_ref();
+        let email = email.as_ref();
         let password = password.as_ref();
         let ep = format!("{}/api/v1/register", self.provider);
         let resp = self
             .http
             .get(&ep)
-            .query(&[("username", username), ("password", password)])
+            .query(&[
+                ("username", username),
+                ("password", password),
+                ("email", email),
+            ])
             .send()?;
         if resp.status().is_success() {
             Ok(())

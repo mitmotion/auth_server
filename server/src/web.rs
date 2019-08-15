@@ -56,8 +56,9 @@ fn get_field(req: &Request, field: &str) -> Result<String> {
 
 fn handler_api_v1_register(req: &Request) -> Result<Response> {
     let username = get_field(req, "username")?;
+    let email = get_field(req, "email")?;
     let password = get_field(req, "password")?;
-    auth::register(username, password)?;
+    auth::register(username, password, email)?;
     Ok(Response::text("success"))
 }
 

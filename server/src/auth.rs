@@ -70,6 +70,7 @@ pub fn prepare_db() -> Result<()> {
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
                   id              VARCHAR PRIMARY KEY UNIQUE,
+                  email           VARCGAR NOT NULL UNIQUE,
                   username        VARCHAR NOT NULL UNIQUE,
                   phash           VARCHAR NOT NULL
         )",
@@ -98,9 +99,11 @@ enum RegisterError {
     UsernameTaken,
 }
 
-pub fn register(username: String, password: String) -> Result<()> {
+pub fn register(username: String, email: String, password: String) -> Result<()> {
     let username = ensure_within_len(username, 16)?;
     let username = ensure_valid_text(username)?;
+    let email = ensure_within_len(email, 256)?;
+    let email = ensure_valid_text(email)?;
     let password = ensure_within_len(password, 256)?;
     let phash = sechash(password)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
@@ -110,8 +113,8 @@ pub fn register(username: String, password: String) -> Result<()> {
     let regres: Result<_> = conn
         .execute(
             "INSERT INTO accounts (id, username, phash)
-                  VALUES ($1, $2, $3)",
-            &[&id, &username, &phash],
+                  VALUES ($1, $2, $3, $4)",
+            &[&id, &email, &username, &phash],
         )
         .map_err(|_| RegisterError::UsernameTaken.into());
     regres?;
