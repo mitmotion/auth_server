@@ -101,7 +101,7 @@ enum RegisterError {
 pub fn register(username: String, password: String) -> Result<()> {
     let username = ensure_within_len(username, 16)?;
     let username = ensure_valid_text(username)?;
-    let password = ensure_within_len(password, 64)?;
+    let password = ensure_within_len(password, 256)?;
     let phash = sechash(password)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
@@ -178,7 +178,7 @@ fn uuid_to_phash(id: Uuid) -> Result<String> {
 pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> Result<AuthToken> {
     let username = ensure_within_len(username, 16)?;
     let username = ensure_valid_text(username)?;
-    let password = ensure_within_len(password, 64)?;
+    let password = ensure_within_len(password, 256)?;
     let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id.clone())?;
     if secverify(password, &phash)? {
