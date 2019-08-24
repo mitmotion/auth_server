@@ -51,7 +51,7 @@ lazy_static! {
         let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None)
             .expect("failed to create manager");
         r2d2::Pool::builder()
-            .max_size(16)
+            .max_size(64)
             .build(manager)
             .expect("failed to create pool")
     };
@@ -59,7 +59,7 @@ lazy_static! {
         let dsn = format!("redis://{}", cache_host());
         let manager = RedisConnectionManager::new(dsn.as_str()).unwrap();
         r2d2::Pool::builder()
-            .max_size(16)
+            .max_size(64)
             .build(manager)
             .expect("failed to create pool")
     };
