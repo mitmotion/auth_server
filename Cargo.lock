@@ -56,7 +56,7 @@ dependencies = [
 [[package]]
 name = "auth-common"
 version = "0.1.0"
-source = "git+https://gitlab.com/veloren/auth.git#c3df02dee00f9e1fca86089ad8b7f1c56b30a879"
+source = "git+https://gitlab.com/veloren/auth.git#8e880748841c73a0b1ae280ea9487d6aa2ad21bd"
 dependencies = [
  "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",

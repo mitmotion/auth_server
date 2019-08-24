@@ -1,9 +1,12 @@
 use crate::auth;
 use crate::util::Result;
-use auth_common::{AuthToken, SignInResponse, UuidLookupResponse, ValidityCheckResponse, RegisterPayload, SignInPayload, UuidLookupPayload, ValidityCheckPayload};
+use auth_common::{
+    AuthToken, RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload,
+    UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
+};
 use rouille::{router, Request, Response};
-use std::net::SocketAddr;
 use std::io::Read;
+use std::net::SocketAddr;
 
 pub fn start() {
     rouille::start_server("0.0.0.0:19253", |req| handler(req));

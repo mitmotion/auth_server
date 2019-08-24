@@ -57,7 +57,7 @@ pub struct SignInResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidityCheckPayload {
-    pub token: AuthToken
+    pub token: AuthToken,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

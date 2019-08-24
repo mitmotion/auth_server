@@ -1,5 +1,8 @@
 pub use auth_common::AuthToken;
-use auth_common::{SignInResponse, UuidLookupResponse, ValidityCheckResponse};
+use auth_common::{
+    RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload, UuidLookupResponse,
+    ValidityCheckPayload, ValidityCheckResponse,
+};
 use std::env;
 use std::net::Ipv4Addr;
 pub use uuid::Uuid;
@@ -34,18 +37,16 @@ impl AuthClient {
         email: impl AsRef<str>,
         password: impl AsRef<str>,
     ) -> Result<(), AuthClientError> {
-        let username = username.as_ref();
-        let email = email.as_ref();
-        let password = password.as_ref();
+        let data = RegisterPayload {
+            username: username.as_ref().to_owned(),
+            password: password.as_ref().to_owned(),
+            email: email.as_ref().to_owned(),
+        };
         let ep = format!("{}/api/v1/register", self.provider);
         let resp = self
             .http
-            .get(&ep)
-            .query(&[
-                ("username", username),
-                ("password", password),
-                ("email", email),
-            ])
+            .post(&ep)
+            .body(serde_json::to_string(&data)?)
             .send()?;
         if resp.status().is_success() {
             Ok(())
@@ -55,9 +56,15 @@ impl AuthClient {
     }
 
     pub fn username_to_uuid(&self, username: impl AsRef<str>) -> Result<Uuid, AuthClientError> {
-        let username = username.as_ref();
+        let data = UuidLookupPayload {
+            username: username.as_ref().to_owned(),
+        };
         let ep = format!("{}/api/v1/utuuid", self.provider);
-        let mut resp = self.http.get(&ep).query(&[("username", username)]).send()?;
+        let mut resp = self
+            .http
+            .get(&ep)
+            .body(serde_json::to_string(&data)?)
+            .send()?;
         if resp.status().is_success() {
             let body = resp.text()?;
             let data: UuidLookupResponse = serde_json::from_str(body.as_str())?;
@@ -73,19 +80,16 @@ impl AuthClient {
         password: impl AsRef<str>,
         server: Ipv4Addr,
     ) -> Result<AuthToken, AuthClientError> {
-        let username = username.as_ref();
-        let password = password.as_ref();
-        let server = server.to_string();
-        let server = server.as_str();
+        let data = SignInPayload {
+            username: username.as_ref().to_owned(),
+            password: password.as_ref().to_owned(),
+            server: server.to_string(),
+        };
         let ep = format!("{}/api/v1/signin", self.provider);
         let mut resp = self
             .http
             .get(&ep)
-            .query(&[
-                ("username", username),
-                ("password", password),
-                ("server", server),
-            ])
+            .body(serde_json::to_string(&data)?)
             .send()?;
         if resp.status().is_success() {
             let body = resp.text()?;
@@ -97,10 +101,13 @@ impl AuthClient {
     }
 
     pub fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
-        let token = token.serialize();
-        let token = token.as_str();
+        let data = ValidityCheckPayload { token: token };
         let ep = format!("{}/api/v1/validate", self.provider);
-        let mut resp = self.http.get(&ep).query(&[("token", token)]).send()?;
+        let mut resp = self
+            .http
+            .get(&ep)
+            .body(serde_json::to_string(&data)?)
+            .send()?;
         if resp.status().is_success() {
             let body = resp.text()?;
             let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
