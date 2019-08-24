@@ -36,14 +36,38 @@ impl AuthToken {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterPayload {
+    pub email: String,
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignInPayload {
+    pub username: String,
+    pub password: String,
+    pub server: String,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SignInResponse {
     pub token: AuthToken,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ValidityCheckPayload {
+    pub token: AuthToken
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ValidityCheckResponse {
     pub uuid: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UuidLookupPayload {
+    pub username: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

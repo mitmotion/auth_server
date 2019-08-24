@@ -1,9 +1,10 @@
 use crate::auth;
 use crate::util::Result;
-use auth_common::{AuthToken, SignInResponse, UuidLookupResponse, ValidityCheckResponse};
+use auth_common::{AuthToken, SignInResponse, UuidLookupResponse, ValidityCheckResponse, RegisterPayload, SignInPayload, UuidLookupPayload, ValidityCheckPayload};
 use failure::Fail;
 use rouille::{router, Request, Response};
 use std::net::SocketAddr;
+use std::io::Read;
 
 #[derive(Debug, Fail)]
 enum RequestError {
@@ -54,11 +55,15 @@ fn get_field(req: &Request, field: &str) -> Result<String> {
     rmaybe
 }
 
+fn get_post_body(req: &Request) -> String {
+    let mut buf = String::new();
+    req.data().unwrap().read_to_string(&mut buf).unwrap();
+    buf
+}
+
 fn handler_api_v1_register(req: &Request) -> Result<Response> {
-    let username = get_field(req, "username")?;
-    let email = get_field(req, "email")?;
-    let password = get_field(req, "password")?;
-    auth::register(username, password, email)?;
+    let data: RegisterPayload = serde_json::from_str(&get_post_body(req))?;
+    auth::register(data.username, data.password, data.email)?;
     Ok(Response::text("success"))
 }
 
