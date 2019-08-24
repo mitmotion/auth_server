@@ -1,16 +1,9 @@
 use crate::auth;
 use crate::util::Result;
 use auth_common::{AuthToken, SignInResponse, UuidLookupResponse, ValidityCheckResponse, RegisterPayload, SignInPayload, UuidLookupPayload, ValidityCheckPayload};
-use failure::Fail;
 use rouille::{router, Request, Response};
 use std::net::SocketAddr;
 use std::io::Read;
-
-#[derive(Debug, Fail)]
-enum RequestError {
-    #[fail(display = "MissingField")]
-    MissingField,
-}
 
 pub fn start() {
     rouille::start_server("0.0.0.0:19253", |req| handler(req));
@@ -49,12 +42,6 @@ fn err_handler(t: Result<Response>) -> Response {
     }
 }
 
-fn get_field(req: &Request, field: &str) -> Result<String> {
-    let maybe: Option<String> = req.get_param(field);
-    let rmaybe: Result<String> = maybe.ok_or(RequestError::MissingField.into());
-    rmaybe
-}
-
 fn get_post_body(req: &Request) -> String {
     let mut buf = String::new();
     req.data().unwrap().read_to_string(&mut buf).unwrap();
@@ -68,29 +55,27 @@ fn handler_api_v1_register(req: &Request) -> Result<Response> {
 }
 
 fn handler_api_v1_username_to_uuid(req: &Request) -> Result<Response> {
-    let username = get_field(req, "username")?;
-    let uuid = auth::username_to_uuid(username)?;
+    let data: UuidLookupPayload = serde_json::from_str(&get_post_body(req))?;
+    let uuid = auth::username_to_uuid(data.username)?;
     let response = UuidLookupResponse { uuid };
     Ok(Response::json(&response))
 }
 
 fn handler_api_v1_signin(req: &Request) -> Result<Response> {
-    let username = get_field(req, "username")?;
-    let password = get_field(req, "password")?;
-    let server = get_field(req, "server")?.parse()?;
-    let token = auth::generate_token(username, password, server)?;
+    let data: SignInPayload = serde_json::from_str(&get_post_body(req))?;
+    let token = auth::generate_token(data.username, data.password, data.server.parse()?)?;
     let response = SignInResponse { token };
     Ok(Response::json(&response))
 }
 
 fn handler_api_v1_validate(req: &Request) -> Result<Response> {
-    let token = AuthToken::deserialize(&get_field(req, "token")?);
+    let data: ValidityCheckPayload = serde_json::from_str(&get_post_body(req))?;
     let remote = if let SocketAddr::V4(addr) = req.remote_addr().clone() {
         addr.ip().clone()
     } else {
         unreachable!();
     };
-    let uuid = auth::verify_token(remote, token)?;
+    let uuid = auth::verify_token(remote, data.token)?;
     let response = ValidityCheckResponse { uuid };
     Ok(Response::json(&response))
 }
