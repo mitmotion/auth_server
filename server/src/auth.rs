@@ -1,6 +1,5 @@
 use crate::util::{wrap_err, Result};
 use auth_common::AuthToken;
-use ezh::{hash as sechash, verify as secverify};
 use failure::Fail;
 use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
@@ -10,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
+
+// TO-DO: fix pw hashing
 
 #[derive(Debug, Fail)]
 enum StringValidateError {
@@ -105,7 +106,7 @@ pub fn register(username: String, email: String, password: String) -> Result<()>
     let email = ensure_within_len(email, 256)?;
     let email = ensure_valid_text(email)?;
     let password = ensure_within_len(password, 256)?;
-    let phash = sechash(password)?;
+    let phash = bcrypt::hash(password, 4)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
     let conn = DB.get().unwrap();
@@ -184,7 +185,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     let password = ensure_within_len(password, 256)?;
     let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id.clone())?;
-    if secverify(password, &phash)? {
+    if bcrypt::verify(password, &phash)? {
         let token = AuthToken::generate();
         let key = token.serialize();
         let user_id = id;

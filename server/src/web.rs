@@ -1,8 +1,8 @@
 use crate::auth;
 use crate::util::Result;
 use auth_common::{
-    AuthToken, RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload,
-    UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
+    RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload, UuidLookupResponse,
+    ValidityCheckPayload, ValidityCheckResponse,
 };
 use rouille::{router, Request, Response};
 use std::io::Read;
