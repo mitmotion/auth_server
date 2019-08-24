@@ -106,7 +106,7 @@ pub fn register(username: String, email: String, password: String) -> Result<()>
     let email = ensure_within_len(email, 256)?;
     let email = ensure_valid_text(email)?;
     let password = ensure_within_len(password, 256)?;
-    let phash = bcrypt::hash(password, 4)?;
+    let phash = bcrypt::hash(password, 2)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
     let conn = DB.get().unwrap();
