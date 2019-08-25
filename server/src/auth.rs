@@ -83,6 +83,7 @@ pub fn prepare_db() -> Result<()> {
 
 struct RawAccount {
     id: String,
+    email: String,
     username: String,
     phash: String,
 }
@@ -113,7 +114,7 @@ pub fn register(username: String, email: String, password: String) -> Result<()>
 
     let regres: Result<_> = conn
         .execute(
-            "INSERT INTO accounts (id, username, phash)
+            "INSERT INTO accounts (id, email, username, phash)
                   VALUES ($1, $2, $3, $4)",
             &[&id, &email, &username, &phash],
         )
@@ -143,11 +144,12 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let username = ensure_within_len(username, 16)?;
     let username = ensure_valid_text(username)?;
 
-    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
+    let query = conn.query("SELECT id, email, username, phash FROM accounts", &[])?;
 
     for row in &query {
         let account = RawAccount {
             id: row.get("id"),
+            email: row.get("email"),
             username: row.get("username"),
             phash: row.get("phash"),
         };
@@ -167,6 +169,7 @@ fn uuid_to_phash(id: Uuid) -> Result<String> {
     for row in &query {
         let account = RawAccount {
             id: row.get("id"),
+            email: row.get("email"),
             username: row.get("username"),
             phash: row.get("phash"),
         };
