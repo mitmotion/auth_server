@@ -10,6 +10,13 @@ use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
 
+// TO-DO: Switch pw hashing algo
+
+const MAX_USERNAME_LEN: usize = 16;
+const MAX_EMAIL_LEN: usize = 256;
+const MAX_PASSWORD_LEN: usize = 256;
+const CONN_POOL_SIZE: u32 = 64;
+
 #[derive(Debug, Fail)]
 enum StringValidateError {
     #[fail(display = "LengthExceeded")]
@@ -49,7 +56,7 @@ lazy_static! {
         let manager = PostgresConnectionManager::new(dsn.as_str(), TlsMode::None)
             .expect("failed to create manager");
         r2d2::Pool::builder()
-            .max_size(64)
+            .max_size(CONN_POOL_SIZE)
             .build(manager)
             .expect("failed to create pool")
     };
@@ -57,7 +64,7 @@ lazy_static! {
         let dsn = format!("redis://{}", cache_host());
         let manager = RedisConnectionManager::new(dsn.as_str()).unwrap();
         r2d2::Pool::builder()
-            .max_size(64)
+            .max_size(CONN_POOL_SIZE)
             .build(manager)
             .expect("failed to create pool")
     };
@@ -100,11 +107,11 @@ enum RegisterError {
 }
 
 pub fn register(username: String, email: String, password: String) -> Result<()> {
-    let username = ensure_within_len(username, 16)?;
+    let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_text(username)?;
-    let email = ensure_within_len(email, 256)?;
+    let email = ensure_within_len(email, MAX_EMAIL_LEN)?;
     let email = ensure_valid_text(email)?;
-    let password = ensure_within_len(password, 256)?;
+    let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
     let phash = bcrypt::hash(password, 2)?;
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
@@ -139,7 +146,7 @@ enum MiscError {
 
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let conn = DB.get().unwrap();
-    let username = ensure_within_len(username, 16)?;
+    let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_text(username)?;
 
     let query = conn.query("SELECT id, email, username, phash FROM accounts", &[])?;
@@ -163,7 +170,7 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
 fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
     let conn = DB.get().unwrap();
-    let query = conn.query("SELECT id, username, phash FROM accounts", &[])?;
+    let query = conn.query("SELECT id, email, username, phash FROM accounts", &[])?;
     for row in &query {
         let account = RawAccount {
             id: row.get("id"),
@@ -181,9 +188,9 @@ fn uuid_to_phash(id: Uuid) -> Result<String> {
 }
 
 pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> Result<AuthToken> {
-    let username = ensure_within_len(username, 16)?;
+    let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_text(username)?;
-    let password = ensure_within_len(password, 256)?;
+    let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
     let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id.clone())?;
     if bcrypt::verify(password, &phash)? {
