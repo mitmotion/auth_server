@@ -71,7 +71,7 @@ pub fn prepare_db() -> Result<()> {
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
                   id              VARCHAR PRIMARY KEY UNIQUE,
-                  email           VARCGAR NOT NULL UNIQUE,
+                  email           VARCHAR NOT NULL UNIQUE,
                   username        VARCHAR NOT NULL UNIQUE,
                   phash           VARCHAR NOT NULL
         )",

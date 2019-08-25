@@ -9,7 +9,7 @@ services:
       CACHE_PROVIDER: cache
   db:
     image: postgres:11-alpine
-    command: postgres -c 'max_connections=17'
+    command: postgres -c 'max_connections=65'
     volumes:
       - "/opt/auth-server/database:/var/lib/postgresql/data"
     environment:
