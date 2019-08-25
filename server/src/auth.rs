@@ -11,6 +11,7 @@ use std::net::Ipv4Addr;
 use uuid::Uuid;
 
 // TO-DO: Switch pw hashing algo
+// TO-DO: optimize this jank thing
 
 const MAX_USERNAME_LEN: usize = 16;
 const MAX_EMAIL_LEN: usize = 256;
