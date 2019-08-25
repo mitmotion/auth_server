@@ -14,7 +14,7 @@ pub fn start() {
 
 fn handler(req: &Request) -> Response {
     router!(req,
-        (POST) ["/ping"] => {
+        (GET) ["/ping"] => {
             Response::text("pong")
         },
         (POST) ["/api/v1/register"] => {
