@@ -10,8 +10,6 @@ use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
 
-// TO-DO: fix pw hashing
-
 #[derive(Debug, Fail)]
 enum StringValidateError {
     #[fail(display = "LengthExceeded")]
