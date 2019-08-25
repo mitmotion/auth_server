@@ -14,19 +14,19 @@ pub fn start() {
 
 fn handler(req: &Request) -> Response {
     router!(req,
-        (GET) ["/ping"] => {
+        (POST) ["/ping"] => {
             Response::text("pong")
         },
-        (GET) ["/api/v1/register"] => {
+        (POST) ["/api/v1/register"] => {
             err_handler(handler_api_v1_register(req))
         },
-        (GET) ["/api/v1/utuuid"] => {
+        (POST) ["/api/v1/utuuid"] => {
             err_handler(handler_api_v1_username_to_uuid(req))
         },
-        (GET) ["/api/v1/signin"] => {
+        (POST) ["/api/v1/signin"] => {
             err_handler(handler_api_v1_signin(req))
         },
-        (GET) ["/api/v1/validate"] => {
+        (POST) ["/api/v1/validate"] => {
             err_handler(handler_api_v1_validate(req))
         },
         _ => {
