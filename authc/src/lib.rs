@@ -8,7 +8,7 @@ use std::net::Ipv4Addr;
 pub use uuid::Uuid;
 
 fn resolve_provider() -> String {
-    env::var("VELOREN_AUTH_PROVIDER").unwrap_or("https://auth.veloren.net".to_owned())
+    env::var("VELOREN_AP").unwrap_or("https://auth.veloren.net".to_owned())
 }
 
 pub enum AuthClientError {

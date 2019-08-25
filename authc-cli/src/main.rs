@@ -76,7 +76,7 @@ fn main() {
 
 fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
     if let Some(server) = args.value_of("auth") {
-        std::env::set_var("VELOREN_AUTH_PROVIDER", server);
+        std::env::set_var("VELOREN_AP", server);
     }
 
     AuthClient::new()
