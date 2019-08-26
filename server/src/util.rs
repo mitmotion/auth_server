@@ -18,7 +18,7 @@ pub fn hash(data: &[u8]) -> String {
         mem_cost: 8192,
         secret: &[],
         thread_mode: ThreadMode::Sequential,
-        time_cost: 4,
+        time_cost: 1,
         variant: Variant::Argon2d,
         version: Version::Version13,
     };
