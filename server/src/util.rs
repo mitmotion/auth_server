@@ -15,7 +15,7 @@ pub fn hash(data: &[u8]) -> String {
         ad: &[],
         hash_length: 64,
         lanes: 1,
-        mem_cost: 8192,
+        mem_cost: 4096,
         secret: &[],
         thread_mode: ThreadMode::Sequential,
         time_cost: 1,
