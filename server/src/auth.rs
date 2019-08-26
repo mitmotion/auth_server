@@ -1,4 +1,4 @@
-use crate::util::{wrap_err, Result};
+use crate::util::{hash, verify, wrap_err, Result};
 use auth_common::AuthToken;
 use failure::Fail;
 use lazy_static::lazy_static;
@@ -10,7 +10,6 @@ use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
 
-// TO-DO: Switch pw hashing algo
 // TO-DO: optimize this jank thing
 
 const MAX_USERNAME_LEN: usize = 16;
@@ -113,7 +112,7 @@ pub fn register(username: String, email: String, password: String) -> Result<()>
     let email = ensure_within_len(email, MAX_EMAIL_LEN)?;
     let email = ensure_valid_text(email)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
-    let phash = bcrypt::hash(password, 2)?;
+    let phash = hash(password.as_bytes());
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
     let conn = DB.get().unwrap();
@@ -194,7 +193,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
     let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id.clone())?;
-    if bcrypt::verify(password, &phash)? {
+    if verify(&phash, password.as_bytes()) {
         let token = AuthToken::generate();
         let key = token.serialize();
         let user_id = id;
