@@ -137,7 +137,10 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_text(username)?;
 
-    let query = conn.query("SELECT id, email, username, phash FROM accounts", &[])?;
+    let query = conn.query(
+        "SELECT id, email, username, phash FROM accounts WHERE username = '$1'",
+        &[&username],
+    )?;
 
     for row in &query {
         let account = RawAccount {
@@ -158,7 +161,10 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
 fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
     let conn = DB.get().unwrap();
-    let query = conn.query("SELECT id, email, username, phash FROM accounts", &[])?;
+    let query = conn.query(
+        "SELECT id, email, username, phash FROM accounts WHERE uuid = '$1'",
+        &[&id],
+    )?;
     for row in &query {
         let account = RawAccount {
             id: row.get("id"),
