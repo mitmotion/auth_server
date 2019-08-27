@@ -1,10 +1,9 @@
+use crate::cache::ExpiryCache;
 use crate::util::{hash, verify, wrap_err, Result};
 use auth_common::AuthToken;
 use failure::Fail;
 use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
-use r2d2_redis::RedisConnectionManager;
-use redis::Commands;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::net::Ipv4Addr;
@@ -46,10 +45,6 @@ fn db_host() -> String {
     env::var("DB_PROVIDER").unwrap_or("localhost".to_string())
 }
 
-fn cache_host() -> String {
-    env::var("CACHE_PROVIDER").unwrap_or("localhost".to_string())
-}
-
 lazy_static! {
     static ref DB: r2d2::Pool<PostgresConnectionManager> = {
         let dsn = format!("postgres://postgres:supersecret1337@{}", db_host());
@@ -60,14 +55,7 @@ lazy_static! {
             .build(manager)
             .expect("failed to create pool")
     };
-    static ref CACHE: r2d2::Pool<RedisConnectionManager> = {
-        let dsn = format!("redis://{}", cache_host());
-        let manager = RedisConnectionManager::new(dsn.as_str()).unwrap();
-        r2d2::Pool::builder()
-            .max_size(CONN_POOL_SIZE)
-            .build(manager)
-            .expect("failed to create pool")
-    };
+    static ref CACHE: ExpiryCache<Vec<u8>, Vec<u8>> = ExpiryCache::new();
 }
 
 pub fn prepare_db() -> Result<()> {
@@ -199,15 +187,13 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
         let user_id = id;
         let created_at = time::get_time().sec;
         let server = server.to_string();
-        let mut conn = CACHE.get().unwrap();
         let tokendata = TokenData {
             user_id,
             created_at,
             server,
         };
         let tokendata = bincode::serialize(&tokendata)?;
-        conn.set(&key, tokendata)?;
-        conn.expire(&key, 60)?;
+        CACHE.set(key.into_bytes(), tokendata);
         Ok(token)
     } else {
         Err(MiscError::InvalidPassword.into())
@@ -217,8 +203,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
     let key = token.serialize();
-    let mut conn = CACHE.get().unwrap();
-    let tokendataraw: Vec<u8> = conn.get(key)?;
+    let tokendataraw: Vec<u8> = wrap_err(CACHE.get(&key.into_bytes()))?.1.clone();
     let t1: TokenData = bincode::deserialize(&tokendataraw)?;
     let t1time = t1.created_at;
     let currenttime = time::get_time().sec;

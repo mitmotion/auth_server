@@ -1,9 +1,9 @@
 use dashmap::{DashMap, DashMapRef};
+use std::fmt;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
-use std::ops::Deref;
 
 fn expiry_work<K: Hash + Eq + Send + Sync, V: Send + Sync>(cache: &DashMap<K, (Instant, V)>) {
     loop {
@@ -14,7 +14,7 @@ fn expiry_work<K: Hash + Eq + Send + Sync, V: Send + Sync>(cache: &DashMap<K, (I
 
 pub struct ExpiryCache<K: 'static + Hash + Eq + Send + Sync, V: 'static + Send + Sync> {
     kv: Arc<DashMap<K, (Instant, V)>>,
-    expiry_worker: thread::JoinHandle<()>,
+    _expiry_worker: thread::JoinHandle<()>,
 }
 
 impl<K: 'static + Hash + Eq + Send + Sync, V: 'static + Send + Sync> ExpiryCache<K, V> {
@@ -25,7 +25,7 @@ impl<K: 'static + Hash + Eq + Send + Sync, V: 'static + Send + Sync> ExpiryCache
 
         Self {
             kv: map,
-            expiry_worker: handle,
+            _expiry_worker: handle,
         }
     }
 
@@ -33,7 +33,20 @@ impl<K: 'static + Hash + Eq + Send + Sync, V: 'static + Send + Sync> ExpiryCache
         self.kv.insert(k, (Instant::now(), v));
     }
 
-    pub fn get(&self, k: &K) -> Option<DashMapRef<'_, K, (Instant, V)>> {
-        self.kv.get(k)
+    pub fn get(&self, k: &K) -> Result<DashMapRef<'_, K, (Instant, V)>, CacheError> {
+        self.kv.get(k).ok_or(CacheError::InvalidKey)
     }
 }
+
+#[derive(Debug)]
+pub enum CacheError {
+    InvalidKey,
+}
+
+impl fmt::Display for CacheError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CacheError")
+    }
+}
+
+impl std::error::Error for CacheError {}

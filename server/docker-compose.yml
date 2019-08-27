@@ -6,7 +6,6 @@ services:
       - "19253:19253"
     environment:
       DB_PROVIDER: db
-      CACHE_PROVIDER: cache
   db:
     image: postgres:11-alpine
     command: postgres -c 'max_connections=65'
@@ -14,6 +13,3 @@ services:
       - "/opt/auth-server/database:/var/lib/postgresql/data"
     environment:
       POSTGRES_PASSWORD: supersecret1337
-  cache:
-    image: redis:5-alpine
-    command: [sh, -c, "rm -f /data/dump.rdb && redis-server"]
