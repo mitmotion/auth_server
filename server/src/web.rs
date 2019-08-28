@@ -73,8 +73,8 @@ fn handler_api_v1_signin(req: &Request) -> Result<Response> {
 
 fn handler_api_v1_validate(req: &Request) -> Result<Response> {
     let data: ValidityCheckPayload = serde_json::from_str(&get_post_body(req))?;
-    let remote = if let SocketAddr::V4(addr) = req.remote_addr().clone() {
-        addr.ip().clone()
+    let remote = if let SocketAddr::V4(addr) = req.remote_addr() {
+        *addr.ip()
     } else {
         unreachable!();
     };

@@ -42,7 +42,7 @@ fn ensure_valid_text(s: String) -> Result<String> {
 }
 
 fn db_host() -> String {
-    env::var("DB_PROVIDER").unwrap_or("localhost".to_string())
+    env::var("DB_PROVIDER").unwrap_or_else(|_| "localhost".to_string())
 }
 
 lazy_static! {
@@ -185,7 +185,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     let username = ensure_valid_text(username)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
     let id = username_to_uuid(username)?;
-    let phash = uuid_to_phash(id.clone())?;
+    let phash = uuid_to_phash(id)?;
     if verify(&phash, password.as_bytes()) {
         let token = AuthToken::generate();
         let key = token.serialize();
