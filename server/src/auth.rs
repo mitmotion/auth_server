@@ -84,7 +84,6 @@ struct RawAccount {
 #[derive(Serialize, Deserialize)]
 struct TokenData {
     user_id: Uuid,
-    created_at: i64,
     server: String,
 }
 
@@ -191,13 +190,8 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
         let token = AuthToken::generate();
         let key = token.serialize();
         let user_id = id;
-        let created_at = time::get_time().sec;
         let server = server.to_string();
-        let tokendata = TokenData {
-            user_id,
-            created_at,
-            server,
-        };
+        let tokendata = TokenData { user_id, server };
         let tokendata = bincode::serialize(&tokendata)?;
         CACHE.set(key.into_bytes(), tokendata);
         Ok(token)
@@ -211,14 +205,9 @@ pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let key = token.serialize();
     let tokendataraw: Vec<u8> = wrap_err(CACHE.get(&key.into_bytes()))?.1.clone();
     let t1: TokenData = bincode::deserialize(&tokendataraw)?;
-    let t1time = t1.created_at;
-    let currenttime = time::get_time().sec;
-    let diff = currenttime - t1time;
     if addr == t1.server {
-        if diff < 60 {
-            // token is valid
-            return Ok(t1.user_id);
-        }
+        // token is valid
+        return Ok(t1.user_id);
     } else {
         println!(
             "server from unknown address attempted to verify token, something is up. uaddr = {}",
