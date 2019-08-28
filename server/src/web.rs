@@ -1,12 +1,18 @@
 use crate::auth;
+use crate::ratelimit::RateLimiter;
 use crate::util::Result;
 use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload, UuidLookupResponse,
     ValidityCheckPayload, ValidityCheckResponse,
 };
+use lazy_static::lazy_static;
 use rouille::{router, Request, Response};
 use std::io::Read;
 use std::net::SocketAddr;
+
+lazy_static! {
+    static ref RATELIMITER: RateLimiter = RateLimiter::new();
+}
 
 pub fn start() {
     rouille::start_server("0.0.0.0:19253", |req| handler(req));
@@ -18,7 +24,7 @@ fn handler(req: &Request) -> Response {
             Response::text("pong")
         },
         (POST) ["/api/v1/register"] => {
-            err_handler(handler_api_v1_register(req))
+            rr_or_404(req, |req| err_handler(handler_api_v1_register(req)))
         },
         (POST) ["/api/v1/utuuid"] => {
             err_handler(handler_api_v1_username_to_uuid(req))
@@ -33,6 +39,15 @@ fn handler(req: &Request) -> Response {
             Response::empty_404()
         }
     )
+}
+
+fn rr_or_404(req: &Request, f: impl FnOnce(&Request) -> Response) -> Response {
+    let addr = req.remote_addr().ip();
+    if RATELIMITER.check(addr) {
+        f(req)
+    } else {
+        Response::empty_404()
+    }
 }
 
 fn err_handler(t: Result<Response>) -> Response {
