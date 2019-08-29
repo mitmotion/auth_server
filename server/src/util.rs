@@ -12,7 +12,7 @@ pub fn wrap_err<T, E: 'static + StdError + Sync + Send>(r: StdResult<T, E>) -> R
 
 const ARGON2CONFIG: Config = Config {
     ad: &[],
-    hash_length: 64,
+    hash_length: 128,
     lanes: 1,
     mem_cost: 4096,
     secret: &[],
@@ -23,7 +23,7 @@ const ARGON2CONFIG: Config = Config {
 };
 
 pub fn hash(data: &[u8]) -> String {
-    let mut salt: [u8; 64] = [0; 64];
+    let mut salt: [u8; 128] = [0; 128];
     thread_rng().fill(&mut salt[..]);
 
     argon2::hash_encoded(data, &salt, &ARGON2CONFIG).unwrap()
