@@ -17,6 +17,9 @@ impl RateLimiter {
     }
 
     pub fn check(&self, addr: IpAddr) -> bool {
+        if addr.is_loopback() {
+            return true;
+        }
         let mut shard = self.limits.get_raw_mut_from_key(&addr);
         let v = shard.entry(addr).or_default();
         v.push(Instant::now());
