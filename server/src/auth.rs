@@ -4,12 +4,11 @@ use auth_common::AuthToken;
 use failure::Fail;
 use lazy_static::lazy_static;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::net::Ipv4Addr;
 use uuid::Uuid;
-
-// TO-DO: optimize this jank thing
 
 const MAX_USERNAME_LEN: usize = 16;
 const MAX_EMAIL_LEN: usize = 256;
@@ -23,6 +22,9 @@ enum StringValidateError {
 
     #[fail(display = "InvalidText")]
     InvalidText,
+
+    #[fail(display = "InvalidEmail")]
+    InvalidEmail,
 }
 
 fn ensure_within_len(s: String, l: usize) -> Result<String> {
@@ -34,10 +36,20 @@ fn ensure_within_len(s: String, l: usize) -> Result<String> {
 }
 
 fn ensure_valid_text(s: String) -> Result<String> {
-    if s.is_ascii() {
+    let text_re = Regex::new(r#"^[[:word:]]*$"#).unwrap();
+    if text_re.is_match(&s) {
         Ok(s)
     } else {
         Err(StringValidateError::InvalidText.into())
+    }
+}
+
+fn ensure_valid_email(s: String) -> Result<String> {
+    let email_re = Regex::new(r#"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"#).unwrap();
+    if email_re.find_iter(&s).count() == 1 {
+        Ok(s)
+    } else {
+        Err(StringValidateError::InvalidEmail.into())
     }
 }
 
@@ -97,7 +109,7 @@ pub fn register(username: String, email: String, password: String) -> Result<()>
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_text(username)?;
     let email = ensure_within_len(email, MAX_EMAIL_LEN)?;
-    let email = ensure_valid_text(email)?;
+    let email = ensure_valid_email(email)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
     let phash = hash(password.as_bytes());
     let id = Uuid::new_v4().to_hyphenated().to_string();
