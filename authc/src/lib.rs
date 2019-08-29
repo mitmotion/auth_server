@@ -6,6 +6,14 @@ use auth_common::{
 use std::env;
 use std::net::Ipv4Addr;
 pub use uuid::Uuid;
+use sha3::{Digest, Sha3_512};
+
+fn mixpw(s: &str) -> String {
+    let mut hasher = Sha3_512::new();
+    hasher.input(s.as_bytes());
+    let b = hasher.result();
+    hex::encode(&b[..])
+}
 
 fn resolve_provider() -> String {
     env::var("VELOREN_AP").unwrap_or("https://auth.veloren.net".to_owned())
@@ -39,7 +47,7 @@ impl AuthClient {
     ) -> Result<(), AuthClientError> {
         let data = RegisterPayload {
             username: username.as_ref().to_owned(),
-            password: password.as_ref().to_owned(),
+            password: mixpw(password.as_ref()),
             email: email.as_ref().to_owned(),
         };
         let ep = format!("{}/api/v1/register", self.provider);
@@ -82,7 +90,7 @@ impl AuthClient {
     ) -> Result<AuthToken, AuthClientError> {
         let data = SignInPayload {
             username: username.as_ref().to_owned(),
-            password: password.as_ref().to_owned(),
+            password: mixpw(password.as_ref()),
             server: server.to_string(),
         };
         let ep = format!("{}/api/v1/signin", self.provider);

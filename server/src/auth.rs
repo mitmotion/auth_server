@@ -25,6 +25,9 @@ enum StringValidateError {
 
     #[fail(display = "InvalidEmail")]
     InvalidEmail,
+
+    #[fail(display = "InvalidPassword")]
+    InvalidPassword,
 }
 
 fn ensure_within_len(s: String, l: usize) -> Result<String> {
@@ -51,6 +54,14 @@ fn ensure_valid_email(s: String) -> Result<String> {
     }
 }
 
+fn ensure_valid_password(s: String) -> Result<String> {
+    if PASSWORD_RE.is_match(&s) {
+        Ok(s)
+    } else {
+        Err(StringValidateError::InvalidPassword.into())
+    }
+}
+
 fn db_host() -> String {
     env::var("DB_PROVIDER").unwrap_or_else(|_| "localhost".to_string())
 }
@@ -68,6 +79,7 @@ lazy_static! {
     static ref CACHE: ExpiryCache<Vec<u8>, Vec<u8>> = ExpiryCache::new();
     static ref EMAIL_RE: Regex = Regex::new(r#"^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$"#).unwrap();
     static ref USERNAME_RE: Regex = Regex::new(r#"^[[:word:]]*$"#).unwrap();
+    static ref PASSWORD_RE: Regex = Regex::new(r#"^[[:xdigit:]]*$"#).unwrap();
 }
 
 pub fn prepare_db() -> Result<()> {
@@ -111,6 +123,7 @@ pub fn register(username: String, email: String, password: String) -> Result<()>
     let email = ensure_within_len(email, MAX_EMAIL_LEN)?;
     let email = ensure_valid_email(email)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
+    let password = ensure_valid_password(password)?;
     let phash = hash(password.as_bytes());
     let id = Uuid::new_v4().to_hyphenated().to_string();
 
@@ -196,6 +209,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_text(username)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
+    let password = ensure_valid_password(password)?;
     let id = username_to_uuid(username)?;
     let phash = uuid_to_phash(id)?;
     if verify(&phash, password.as_bytes()) {
