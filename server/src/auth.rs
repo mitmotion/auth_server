@@ -76,7 +76,7 @@ lazy_static! {
             .build(manager)
             .expect("failed to create pool")
     };
-    static ref CACHE: ExpiryCache<Vec<u8>, Vec<u8>> = ExpiryCache::new();
+    static ref CACHE: ExpiryCache<AuthToken, TokenData> = ExpiryCache::new();
     static ref EMAIL_RE: Regex = Regex::new(r#"^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$"#).unwrap();
     static ref USERNAME_RE: Regex = Regex::new(r#"^[[:word:]]*$"#).unwrap();
     static ref PASSWORD_RE: Regex = Regex::new(r#"^[[:xdigit:]]*$"#).unwrap();
@@ -214,12 +214,10 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     let phash = uuid_to_phash(id)?;
     if verify(&phash, password.as_bytes()) {
         let token = AuthToken::generate();
-        let key = token.serialize();
         let user_id = id;
         let server = server.to_string();
         let tokendata = TokenData { user_id, server };
-        let tokendata = bincode::serialize(&tokendata)?;
-        CACHE.set(key.into_bytes(), tokendata);
+        CACHE.set(token, tokendata);
         Ok(token)
     } else {
         Err(MiscError::InvalidPassword.into())
@@ -228,9 +226,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
 
 pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
     let addr = client.to_string();
-    let key = token.serialize();
-    let tokendataraw: Vec<u8> = wrap_err(CACHE.get(&key.into_bytes()))?.1.clone();
-    let t1: TokenData = bincode::deserialize(&tokendataraw)?;
+    let t1: TokenData = wrap_err(CACHE.get(&token))?.1.clone();
     if addr == t1.server {
         // token is valid
         return Ok(t1.user_id);
