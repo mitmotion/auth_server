@@ -105,7 +105,7 @@ struct RawAccount {
     phash: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct TokenData {
     user_id: Uuid,
     server: String,
