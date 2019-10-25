@@ -38,7 +38,7 @@ fn ensure_within_len(s: String, l: usize) -> Result<String> {
     }
 }
 
-fn ensure_valid_text(s: String) -> Result<String> {
+fn ensure_valid_username(s: String) -> Result<String> {
     if USERNAME_RE.is_match(&s) {
         Ok(s)
     } else {
@@ -78,7 +78,7 @@ lazy_static! {
     };
     static ref CACHE: ExpiryCache<AuthToken, TokenData> = ExpiryCache::new();
     static ref EMAIL_RE: Regex = Regex::new(r#"^.*$"#).unwrap();
-    static ref USERNAME_RE: Regex = Regex::new(r#"^[[:word:]]*$"#).unwrap();
+    static ref USERNAME_RE: Regex = Regex::new(r#"^[A-Za-z0-9_]+$"#).unwrap();
     static ref PASSWORD_RE: Regex = Regex::new(r#"^[[:xdigit:]]*$"#).unwrap();
 }
 
@@ -119,7 +119,7 @@ enum RegisterError {
 
 pub fn register(username: String, email: String, password: String) -> Result<()> {
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
-    let username = ensure_valid_text(username)?;
+    let username = ensure_valid_username(username)?;
     let email = ensure_within_len(email, MAX_EMAIL_LEN)?;
     let email = ensure_valid_email(email)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
@@ -159,7 +159,7 @@ enum MiscError {
 pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let conn = DB.get().unwrap();
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
-    let username = ensure_valid_text(username)?;
+    let username = ensure_valid_username(username)?;
 
     let query = conn.query(
         "SELECT id, email, username, phash FROM accounts WHERE username = '$1'",
@@ -207,7 +207,7 @@ fn uuid_to_phash(id: Uuid) -> Result<String> {
 
 pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> Result<AuthToken> {
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
-    let username = ensure_valid_text(username)?;
+    let username = ensure_valid_username(username)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
     let password = ensure_valid_password(password)?;
     let id = username_to_uuid(username)?;
