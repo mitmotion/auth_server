@@ -20,7 +20,7 @@ pub fn start() {
 
 fn handler(req: &Request) -> Response {
     println!("{:?}", req);
-    router!(req,
+    let res = router!(req,
         (GET) ["/ping"] => {
             Response::text("pong")
         },
@@ -39,7 +39,8 @@ fn handler(req: &Request) -> Response {
         _ => {
             Response::empty_404()
         }
-    )
+    );
+    res.with_unique_header("Access-Control-Allow-Origin", "*")
 }
 
 fn rr_or_404(req: &Request, f: impl FnOnce(&Request) -> Response) -> Response {
