@@ -70,7 +70,7 @@ impl AuthClient {
         let ep = format!("{}/api/v1/utuuid", self.provider);
         let mut resp = self
             .http
-            .get(&ep)
+            .post(&ep)
             .body(serde_json::to_string(&data)?)
             .send()?;
         if resp.status().is_success() {
@@ -96,7 +96,7 @@ impl AuthClient {
         let ep = format!("{}/api/v1/signin", self.provider);
         let mut resp = self
             .http
-            .get(&ep)
+            .post(&ep)
             .body(serde_json::to_string(&data)?)
             .send()?;
         if resp.status().is_success() {
@@ -113,7 +113,7 @@ impl AuthClient {
         let ep = format!("{}/api/v1/validate", self.provider);
         let mut resp = self
             .http
-            .get(&ep)
+            .post(&ep)
             .body(serde_json::to_string(&data)?)
             .send()?;
         if resp.status().is_success() {

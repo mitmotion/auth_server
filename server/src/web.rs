@@ -19,6 +19,7 @@ pub fn start() {
 }
 
 fn handler(req: &Request) -> Response {
+    println!("{:?}", req);
     router!(req,
         (GET) ["/ping"] => {
             Response::text("pong")
@@ -46,7 +47,7 @@ fn rr_or_404(req: &Request, f: impl FnOnce(&Request) -> Response) -> Response {
     if RATELIMITER.check(addr) {
         f(req)
     } else {
-        Response::empty_404()
+        Response::text("ratelimit").with_status_code(429)
     }
 }
 
@@ -55,7 +56,7 @@ fn err_handler(t: Result<Response>) -> Response {
         Ok(r) => r,
         Err(why) => {
             println!("{:?}", why);
-            Response::empty_404()
+            Response::text(why.to_string()).with_status_code(400)
         }
     }
 }

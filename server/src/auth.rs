@@ -157,7 +157,7 @@ pub fn username_to_uuid(username: String) -> Result<Uuid> {
     let username = ensure_valid_username(username)?;
 
     let query = conn.query(
-        "SELECT id, email, username, phash FROM accounts WHERE username = '$1'",
+        "SELECT id, email, username, phash FROM accounts WHERE username = $1",
         &[&username],
     )?;
 
@@ -181,7 +181,7 @@ fn uuid_to_phash(id: Uuid) -> Result<String> {
     let id = id.to_hyphenated().to_string();
     let conn = DB.get().unwrap();
     let query = conn.query(
-        "SELECT id, email, username, phash FROM accounts WHERE uuid = '$1'",
+        "SELECT id, email, username, phash FROM accounts WHERE id = $1",
         &[&id],
     )?;
     for row in &query {
