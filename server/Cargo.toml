@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 uuid = { version = "0.7.4", features = ["serde", "v4"] }
-auth-common = { path = "../common" }
+auth-common = { git = "https://gitlab.com/veloren/auth" }
 lazy_static = "1.4.0"
 failure = "0.1.5"
 rouille = "3.0.0"
