@@ -55,11 +55,7 @@ fn ensure_valid_email(s: String) -> Result<String> {
 }
 
 fn ensure_valid_password(s: String) -> Result<String> {
-    if PASSWORD_RE.is_match(&s) {
-        Ok(s)
-    } else {
-        Err(StringValidateError::InvalidPassword.into())
-    }
+    Ok(s)
 }
 
 fn db_host() -> String {
@@ -79,7 +75,6 @@ lazy_static! {
     static ref CACHE: ExpiryCache<AuthToken, TokenData> = ExpiryCache::new();
     static ref EMAIL_RE: Regex = Regex::new(r#"^.*$"#).unwrap();
     static ref USERNAME_RE: Regex = Regex::new(r#"^[A-Za-z0-9_]+$"#).unwrap();
-    static ref PASSWORD_RE: Regex = Regex::new(r#"^[[:xdigit:]]*$"#).unwrap();
 }
 
 pub fn prepare_db() -> Result<()> {
