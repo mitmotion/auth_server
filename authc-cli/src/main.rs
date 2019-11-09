@@ -14,7 +14,7 @@ fn main() {
             let password = get_arg(&args, "password", "Please specify the password.");
             let auth = set_auth_server(&args);
 
-            if let Err(e) = auth.register(&username, &password, &email) {
+            if let Err(e) = auth.register(&username, &password) {
                 exit_with(format!("Register failed with: {}", e));
             }
             println!("Successfully registered {}", username);

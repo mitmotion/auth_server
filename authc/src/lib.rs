@@ -42,13 +42,11 @@ impl AuthClient {
     pub fn register(
         &self,
         username: impl AsRef<str>,
-        email: impl AsRef<str>,
         password: impl AsRef<str>,
     ) -> Result<(), AuthClientError> {
         let data = RegisterPayload {
             username: username.as_ref().to_owned(),
             password: mixpw(password.as_ref()),
-            email: email.as_ref().to_owned(),
         };
         let ep = format!("{}/api/v1/register", self.provider);
         let resp = self

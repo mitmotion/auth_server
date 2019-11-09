@@ -74,7 +74,6 @@ pub fn prepare_db() -> Result<()> {
     wrap_err(conn.execute(
         "CREATE TABLE IF NOT EXISTS accounts (
                   id              VARCHAR PRIMARY KEY UNIQUE,
-                  email           VARCHAR NOT NULL UNIQUE,
                   username        VARCHAR NOT NULL UNIQUE,
                   phash           VARCHAR NOT NULL
         )",
@@ -102,7 +101,7 @@ enum RegisterError {
     UsernameTaken,
 }
 
-pub fn register(username: String,password: String) -> Result<()> {
+pub fn register(username: String, password: String) -> Result<()> {
     let username = ensure_within_len(username, MAX_USERNAME_LEN)?;
     let username = ensure_valid_username(username)?;
     let password = ensure_within_len(password, MAX_PASSWORD_LEN)?;
