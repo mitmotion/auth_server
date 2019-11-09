@@ -11,7 +11,6 @@ fn main() {
     match matches.subcommand() {
         ("register", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
-            let email = get_arg(&args, "email", "Please specify the email.");
             let password = get_arg(&args, "password", "Please specify the password.");
             let auth = set_auth_server(&args);
 

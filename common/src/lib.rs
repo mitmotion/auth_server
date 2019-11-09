@@ -38,7 +38,6 @@ impl AuthToken {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterPayload {
-    pub email: String,
     pub username: String,
     pub password: String,
 }

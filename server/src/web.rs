@@ -69,7 +69,7 @@ fn get_post_body(req: &Request) -> String {
 
 fn handler_api_v1_register(req: &Request) -> Result<Response> {
     let data: RegisterPayload = serde_json::from_str(&get_post_body(req))?;
-    auth::register(data.username, data.password, data.email)?;
+    auth::register(data.username, data.email, data.password)?;
     Ok(Response::text("success"))
 }
 
