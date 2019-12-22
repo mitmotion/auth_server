@@ -204,18 +204,7 @@ pub fn generate_token(username: String, password: String, server: Ipv4Addr) -> R
     }
 }
 
-pub fn verify_token(client: Ipv4Addr, token: AuthToken) -> Result<Uuid> {
-    let addr = client.to_string();
+pub fn verify_token(token: AuthToken) -> Result<Uuid> {
     let t1: TokenData = wrap_err(CACHE.get(&token))?.1.clone();
-    if addr == t1.server {
-        // token is valid
-        return Ok(t1.user_id);
-    } else {
-        println!(
-            "server from unknown address attempted to verify token, something is up. uaddr = {}",
-            addr
-        );
-    }
-
-    Err(MiscError::InvalidToken.into())
+    Ok(t1.user_id)
 }

@@ -1,7 +1,7 @@
 use authc::{AuthClient, AuthToken};
 use clap::{load_yaml, App};
 
-use std::net::Ipv4Addr;
+use std::net::IpAddr;
 
 fn main() {
     let yml = load_yaml!("cli.yml");
@@ -22,7 +22,7 @@ fn main() {
         ("login", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
             let password = get_arg(&args, "password", "Please specify the password.");
-            let server: Ipv4Addr = match get_arg(
+            let server: IpAddr = match get_arg(
                 &args,
                 "server",
                 "Please specify the server you want to join.",
@@ -74,11 +74,10 @@ fn main() {
 }
 
 fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
-    if let Some(server) = args.value_of("auth") {
-        std::env::set_var("VELOREN_AP", server);
+    match args.value_of("auth") {
+        Some(server) => AuthClient::new(server),
+        _ => AuthClient::new("https://auth.veloren.net"),
     }
-
-    AuthClient::new()
 }
 
 fn get_arg<T: std::fmt::Display>(args: &clap::ArgMatches, arg: T, error_msg: T) -> String
