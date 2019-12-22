@@ -3,8 +3,7 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload, UuidLookupResponse,
     ValidityCheckPayload, ValidityCheckResponse,
 };
-use std::env;
-use std::net::Ipv4Addr;
+use std::net::IpAddr;
 pub use uuid::Uuid;
 use sha3::{Digest, Sha3_512};
 
@@ -13,10 +12,6 @@ fn mixpw(s: &str) -> String {
     hasher.input(s.as_bytes());
     let b = hasher.result();
     hex::encode(&b[..])
-}
-
-fn resolve_provider() -> String {
-    env::var("VELOREN_AP").unwrap_or("https://auth.veloren.net".to_owned())
 }
 
 pub enum AuthClientError {
@@ -32,10 +27,10 @@ pub struct AuthClient {
 }
 
 impl AuthClient {
-    pub fn new() -> Self {
+    pub fn new<T: ToString>(provider: T) -> Self {
         Self {
             http: reqwest::Client::new(),
-            provider: resolve_provider(),
+            provider: provider.to_string(),
         }
     }
 
@@ -84,7 +79,7 @@ impl AuthClient {
         &self,
         username: impl AsRef<str>,
         password: impl AsRef<str>,
-        server: Ipv4Addr,
+        server: IpAddr,
     ) -> Result<AuthToken, AuthClientError> {
         let data = SignInPayload {
             username: username.as_ref().to_owned(),
@@ -107,7 +102,7 @@ impl AuthClient {
     }
 
     pub fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
-        let data = ValidityCheckPayload { token: token };
+        let data = ValidityCheckPayload { token };
         let ep = format!("{}/api/v1/validate", self.provider);
         let mut resp = self
             .http
