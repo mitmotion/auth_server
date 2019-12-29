@@ -1,14 +1,5 @@
-mod auth;
-mod cache;
-mod ratelimit;
-mod util;
-mod web;
+pub mod cache;
 
-use log::LevelFilter;
-use util::Result;
-fn main() -> Result<()> {
-    simple_logging::log_to_stderr(LevelFilter::Debug);
-    auth::prepare_db()?;
-    web::start();
-    Ok(())
+fn main() {
+    println!("Hello World!");
 }
