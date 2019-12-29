@@ -46,7 +46,6 @@ pub struct RegisterPayload {
 pub struct SignInPayload {
     pub username: String,
     pub password: String,
-    pub server: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

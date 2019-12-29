@@ -3,11 +3,10 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UuidLookupPayload, UuidLookupResponse,
     ValidityCheckPayload, ValidityCheckResponse,
 };
-use std::net::IpAddr;
-pub use uuid::Uuid;
 use sha3::{Digest, Sha3_512};
+pub use uuid::Uuid;
 
-fn mixpw(s: &str) -> String {
+fn net_prehash(s: &str) -> String {
     let mut hasher = Sha3_512::new();
     hasher.input(s.as_bytes());
     let b = hasher.result();
@@ -41,7 +40,7 @@ impl AuthClient {
     ) -> Result<(), AuthClientError> {
         let data = RegisterPayload {
             username: username.as_ref().to_owned(),
-            password: mixpw(password.as_ref()),
+            password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/api/v1/register", self.provider);
         let resp = self
@@ -79,12 +78,10 @@ impl AuthClient {
         &self,
         username: impl AsRef<str>,
         password: impl AsRef<str>,
-        server: IpAddr,
     ) -> Result<AuthToken, AuthClientError> {
         let data = SignInPayload {
             username: username.as_ref().to_owned(),
-            password: mixpw(password.as_ref()),
-            server: server.to_string(),
+            password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/api/v1/signin", self.provider);
         let mut resp = self
