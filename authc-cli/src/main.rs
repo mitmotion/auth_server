@@ -1,8 +1,6 @@
 use authc::{AuthClient, AuthToken};
 use clap::{load_yaml, App};
 
-use std::net::IpAddr;
-
 fn main() {
     let yml = load_yaml!("cli.yml");
     let app = App::from_yaml(yml);
@@ -22,19 +20,9 @@ fn main() {
         ("login", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
             let password = get_arg(&args, "password", "Please specify the password.");
-            let server: IpAddr = match get_arg(
-                &args,
-                "server",
-                "Please specify the server you want to join.",
-            )
-            .parse()
-            {
-                Ok(addr) => addr,
-                Err(e) => exit_with(format!("failed to parse server address: {}", e)),
-            };
             let auth = set_auth_server(&args);
 
-            match auth.sign_in(&username, &password, server) {
+            match auth.sign_in(&username, &password) {
                 Ok(token) => {
                     println!("Auth Token: {}", token.serialize());
                 }

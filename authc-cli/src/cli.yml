@@ -31,10 +31,6 @@ subcommands:
                 required: true
                 display_order: 1
                 takes_value: true
-            - server:
-                help: The server you want to join.
-                required: true
-                takes_value: true
             - auth:
                 help: The Auth server to use.
                 required: false
