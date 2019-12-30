@@ -80,7 +80,7 @@ pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
     let db = db()?;
     let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
     let result = stmt
-        .query_map(params![username], |row| row.get::<_, String>("uuid"))?
+        .query_map(params![username], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
         .filter_map(|s| Uuid::parse_str(&s).ok())
         .next()
@@ -93,7 +93,7 @@ pub fn uuid_to_username(uuid: &Uuid) -> Result<String, AuthError> {
     let uuid = uuid.to_simple().to_string();
     let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE uuid == ?1")?;
     let result = stmt
-        .query_map(params![uuid], |row| row.get::<_, String>("username"))?
+        .query_map(params![uuid], |row| row.get::<_, String>(1))?
         .filter_map(|s| s.ok())
         .next()
         .ok_or(AuthError::UserDoesNotExist);
@@ -118,7 +118,7 @@ fn is_valid(username: &str, password: &str) -> Result<bool, AuthError> {
     let db = db()?;
     let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
     let result = stmt
-        .query_map(params![username], |row| row.get::<_, String>("pwhash"))?
+        .query_map(params![username], |row| row.get::<_, String>(2))?
         .filter_map(|s| s.ok())
         .filter_map(|correct| argon2::verify_encoded(&correct, password.as_bytes()).ok())
         .next()
