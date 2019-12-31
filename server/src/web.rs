@@ -1,7 +1,10 @@
-use rouille::{start_server, Request, Response, router};
-use std::error::Error;
-use auth_common::{RegisterPayload, UuidLookupPayload, UuidLookupResponse, SignInPayload, SignInResponse, ValidityCheckPayload, ValidityCheckResponse, UsernameLookupPayload, UsernameLookupResponse};
 use crate::auth::{self, AuthError};
+use auth_common::{
+    RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
+    UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
+};
+use rouille::{router, start_server, Request, Response};
+use std::error::Error;
 
 fn err_handle<E: Error>(f: impl FnOnce() -> Result<Response, E>) -> Response {
     match f() {

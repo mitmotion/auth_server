@@ -1,13 +1,13 @@
 use crate::cache::TimedCache;
 use argon2::Error as HashError;
 use auth_common::AuthToken;
+use enum_display_derive::Display;
 use lazy_static::lazy_static;
 use rusqlite::{params, Connection, Error as DbError, NO_PARAMS};
-use uuid::Uuid;
-use std::fmt::Display;
-use enum_display_derive::Display;
-use std::error::Error;
 use serde_json::Error as JsonError;
+use std::error::Error;
+use std::fmt::Display;
+use uuid::Uuid;
 
 lazy_static! {
     static ref TOKENS: TimedCache<AuthToken, Uuid> = TimedCache::new();
