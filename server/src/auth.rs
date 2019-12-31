@@ -70,11 +70,12 @@ pub fn init_db() -> Result<(), AuthError> {
 fn user_exists(username: &str) -> Result<bool, AuthError> {
     let db = db()?;
     let mut stmt = db.prepare("SELECT username FROM users WHERE username == ?1")?;
-    Ok(stmt
+    let exists = stmt
         .query_map(params![username], |_| Ok(()))
         .unwrap()
-        .count()
-        == 1)
+        .next()
+        .is_some();
+    Ok(exists)
 }
 
 pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
