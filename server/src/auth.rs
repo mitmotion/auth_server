@@ -69,7 +69,7 @@ pub fn init_db() -> Result<(), AuthError> {
 
 fn user_exists(username: &str) -> Result<bool, AuthError> {
     let db = db()?;
-    let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
+    let mut stmt = db.prepare("SELECT username FROM users WHERE username == ?1")?;
     Ok(stmt
         .query_map(params![username], |_| Ok(()))
         .unwrap()
@@ -79,7 +79,7 @@ fn user_exists(username: &str) -> Result<bool, AuthError> {
 
 pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
     let db = db()?;
-    let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
+    let mut stmt = db.prepare("SELECT uuid FROM users WHERE username == ?1")?;
     let result = stmt
         .query_map(params![username], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
@@ -92,9 +92,9 @@ pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
 pub fn uuid_to_username(uuid: &Uuid) -> Result<String, AuthError> {
     let db = db()?;
     let uuid = uuid.to_simple().to_string();
-    let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE uuid == ?1")?;
+    let mut stmt = db.prepare("SELECT username FROM users WHERE uuid == ?1")?;
     let result = stmt
-        .query_map(params![uuid], |row| row.get::<_, String>(1))?
+        .query_map(params![uuid], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
         .next()
         .ok_or(AuthError::UserDoesNotExist);
@@ -117,9 +117,9 @@ pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
 
 fn is_valid(username: &str, password: &str) -> Result<bool, AuthError> {
     let db = db()?;
-    let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
+    let mut stmt = db.prepare("SELECT pwhash FROM users WHERE username == ?1")?;
     let result = stmt
-        .query_map(params![username], |row| row.get::<_, String>(2))?
+        .query_map(params![username], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
         .filter_map(|correct| argon2::verify_encoded(&correct, password.as_bytes()).ok())
         .next()
