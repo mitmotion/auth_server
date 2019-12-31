@@ -10,7 +10,7 @@ use std::fmt::Display;
 use uuid::Uuid;
 
 lazy_static! {
-    static ref TOKENS: TimedCache<AuthToken, Uuid> = TimedCache::new();
+    static ref TOKENS: TimedCache = TimedCache::new();
 }
 
 fn db() -> Result<Connection, AuthError> {

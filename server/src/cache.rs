@@ -1,16 +1,17 @@
+use auth_common::AuthToken;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
+use uuid::Uuid;
 
-pub struct TimedCacheEntry<V> {
+pub struct TimedCacheEntry {
     pub timestamp: Instant,
-    pub data: V,
+    pub data: Uuid,
 }
 
-fn work_clean<K: Eq + Hash + Send, V>(map: Arc<Mutex<HashMap<K, TimedCacheEntry<V>>>>) {
+fn work_clean(map: Arc<Mutex<HashMap<AuthToken, TimedCacheEntry>>>) {
     loop {
         thread::sleep(Duration::from_secs(60));
         map.lock()
@@ -19,11 +20,11 @@ fn work_clean<K: Eq + Hash + Send, V>(map: Arc<Mutex<HashMap<K, TimedCacheEntry<
     }
 }
 
-pub struct TimedCache<K, V> {
-    inner: Arc<Mutex<HashMap<K, TimedCacheEntry<V>>>>,
+pub struct TimedCache {
+    inner: Arc<Mutex<HashMap<AuthToken, TimedCacheEntry>>>,
 }
 
-impl<K: 'static + Eq + Hash + Send, V: 'static + Send + Clone> TimedCache<K, V> {
+impl TimedCache {
     pub fn new() -> Self {
         let inner = Arc::new(Mutex::new(HashMap::new()));
         {
@@ -33,7 +34,7 @@ impl<K: 'static + Eq + Hash + Send, V: 'static + Send + Clone> TimedCache<K, V> 
         Self { inner }
     }
 
-    pub fn insert(&self, k: K, v: V) {
+    pub fn insert(&self, k: AuthToken, v: Uuid) {
         self.inner.lock().unwrap().insert(
             k,
             TimedCacheEntry {
@@ -43,7 +44,7 @@ impl<K: 'static + Eq + Hash + Send, V: 'static + Send + Clone> TimedCache<K, V> 
         );
     }
 
-    pub fn run(&self, k: &K, f: impl FnOnce(Option<&mut TimedCacheEntry<V>>) -> bool) {
+    pub fn run(&self, k: &AuthToken, f: impl FnOnce(Option<&mut TimedCacheEntry>) -> bool) {
         let mut inner = self.inner.lock().unwrap();
         let v = inner.get_mut(k);
         if !f(v) {
