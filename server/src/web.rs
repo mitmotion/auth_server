@@ -1,10 +1,17 @@
 use crate::auth::{self, AuthError};
+use crate::ratelimit::RateLimiter;
 use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
+use lazy_static::lazy_static;
 use rouille::{router, start_server, Request, Response};
 use std::error::Error;
+use std::net::IpAddr;
+
+lazy_static! {
+    static ref RATELIMITER: RateLimiter = RateLimiter::new();
+}
 
 const USERNAME_MAX_LEN: usize = 32;
 
@@ -23,8 +30,25 @@ fn err_handle<E: Error>(f: impl FnOnce() -> Result<Response, E>) -> Response {
     }
 }
 
+fn ratelimit(
+    req: &Request,
+    f: fn(&Request) -> Result<Response, AuthError>,
+) -> Result<Response, AuthError> {
+    if RATELIMITER.check(remote(req)) {
+        f(req)
+    } else {
+        Err(AuthError::RateLimit)
+    }
+}
+
+fn remote(req: &Request) -> IpAddr {
+    req.header("X-Real-IP")
+        .map(|ip| ip.parse().expect("Malformed IP header."))
+        .unwrap_or(req.remote_addr().ip())
+}
+
 fn ping(req: &Request) -> Response {
-    Response::text(format!("Ping! {}", req.remote_addr().ip()))
+    Response::text(format!("Ping! {}", remote(req).to_string()))
 }
 
 fn username_to_uuid(req: &Request) -> Result<Response, AuthError> {
@@ -84,11 +108,11 @@ pub fn start() {
             },
 
             (POST) (/register) => {
-                err_handle(|| register(request))
+                err_handle(|| ratelimit(request, register))
             },
 
             (POST) (/generate_token) => {
-                err_handle(|| generate_token(request))
+                err_handle(|| ratelimit(request, generate_token))
             },
 
             (POST) (/verify) => {

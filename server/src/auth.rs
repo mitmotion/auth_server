@@ -31,6 +31,7 @@ pub enum AuthError {
     Hash(HashError),
     Json(JsonError),
     InvalidRequest,
+    RateLimit,
 }
 
 impl Error for AuthError {}
