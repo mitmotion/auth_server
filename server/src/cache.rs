@@ -1,9 +1,9 @@
-use std::time::{Duration, Instant};
-use std::sync::Mutex;
-use std::hash::Hash;
 use std::collections::HashMap;
-use std::thread;
+use std::hash::Hash;
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
+use std::time::{Duration, Instant};
 
 pub struct TimedCacheEntry<V> {
     pub timestamp: Instant,
@@ -11,8 +11,12 @@ pub struct TimedCacheEntry<V> {
 }
 
 fn work_clean<K: Eq + Hash + Send, V>(map: Arc<Mutex<HashMap<K, TimedCacheEntry<V>>>>) {
-    thread::sleep(Duration::from_secs(60));
-    map.lock().unwrap().retain(|_, v| v.timestamp.elapsed() < Duration::from_secs(15));
+    loop {
+        thread::sleep(Duration::from_secs(60));
+        map.lock()
+            .unwrap()
+            .retain(|_, v| v.timestamp.elapsed() < Duration::from_secs(15));
+    }
 }
 
 pub struct TimedCache<K, V> {
@@ -30,7 +34,13 @@ impl<K: 'static + Eq + Hash + Send, V: 'static + Send + Clone> TimedCache<K, V> 
     }
 
     pub fn insert(&self, k: K, v: V) {
-        self.inner.lock().unwrap().insert(k, TimedCacheEntry{ timestamp: Instant::now(), data: v });
+        self.inner.lock().unwrap().insert(
+            k,
+            TimedCacheEntry {
+                timestamp: Instant::now(),
+                data: v,
+            },
+        );
     }
 
     pub fn run(&self, k: &K, f: impl FnOnce(Option<&mut TimedCacheEntry<V>>) -> bool) {
