@@ -21,6 +21,7 @@ pub enum AuthError {
     UserExists,
     UserDoesNotExist,
     InvalidLogin,
+    InvalidToken,
     Db(DbError),
     Hash(HashError),
 }
@@ -87,7 +88,7 @@ pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
     Ok(())
 }
 
-pub fn is_real(username: &str, password: &str) -> Result<bool, AuthError> {
+fn is_real(username: &str, password: &str) -> Result<bool, AuthError> {
     let db = db()?;
     let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
     let result = stmt
@@ -108,4 +109,17 @@ pub fn generate_token(username: &str, password: &str) -> Result<AuthToken, AuthE
     let token = AuthToken::generate();
     TOKENS.insert(token, uuid);
     Ok(token)
+}
+
+pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
+    let mut uuid = None;
+    TOKENS.run(&token, |maybe_entry| {
+        if let Some(entry) = maybe_entry {
+            uuid = Some(entry.data.clone());
+            false
+        } else {
+            false
+        }
+    });
+    uuid.ok_or(AuthError::InvalidToken)
 }
