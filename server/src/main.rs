@@ -1,7 +1,8 @@
-pub mod auth;
-pub mod cache;
-pub mod web;
+mod auth;
+mod cache;
+mod web;
 
 fn main() {
-    println!("Hello World!");
+    auth::init_db().expect("Failed to initialize database");
+    web::start();
 }
