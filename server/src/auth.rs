@@ -14,7 +14,7 @@ lazy_static! {
 }
 
 fn db() -> Result<Connection, AuthError> {
-    Ok(Connection::open("/opt/veloren-auth/auth.db")?)
+    Ok(Connection::open("/opt/veloren-auth/data/auth.db")?)
 }
 
 fn salt() -> [u8; 16] {

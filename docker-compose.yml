@@ -5,4 +5,4 @@ services:
     ports:
       - "19253:19253"
     volumes:
-      - "/opt/veloren-auth:/opt/veloren-auth"
+      - "/opt/veloren-auth/data:/opt/veloren-auth/data"
