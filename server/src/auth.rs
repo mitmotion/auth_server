@@ -88,7 +88,7 @@ pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
     Ok(())
 }
 
-fn is_real(username: &str, password: &str) -> Result<bool, AuthError> {
+fn is_valid(username: &str, password: &str) -> Result<bool, AuthError> {
     let db = db()?;
     let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE username == ?1")?;
     let result = stmt
@@ -101,7 +101,7 @@ fn is_real(username: &str, password: &str) -> Result<bool, AuthError> {
 }
 
 pub fn generate_token(username: &str, password: &str) -> Result<AuthToken, AuthError> {
-    if !is_real(username, password)? {
+    if !is_valid(username, password)? {
         return Err(AuthError::InvalidLogin);
     }
 
@@ -122,4 +122,15 @@ pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
         }
     });
     uuid.ok_or(AuthError::InvalidToken)
+}
+
+pub fn change_password(username: &str, old_password: &str, new_password: &str) -> Result<(), AuthError> {
+    if !is_valid(username, old_password)? {
+        return Err(AuthError::InvalidLogin);
+    }
+
+    let hconfig = argon2::Config::default();
+    let pwhash = argon2::hash_encoded(new_password.as_bytes(), &salt(), &hconfig)?;
+    db()?.execute("UPDATE users SET pwhash = ?1 WHERE username == ?2", params![pwhash, username])?;
+    Ok(())
 }
