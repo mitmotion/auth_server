@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-docker build -t auth-server:latest server-dockerfile
+docker build -t auth-server:latest .
