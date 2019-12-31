@@ -111,6 +111,7 @@ pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
     Ok(())
 }
 
+/// Checks if the password is correct and that the user exists.
 fn is_valid(username: &str, password: &str) -> Result<bool, AuthError> {
     let db = db()?;
     let mut stmt = db.prepare("SELECT pwhash FROM users WHERE username == ?1")?;
