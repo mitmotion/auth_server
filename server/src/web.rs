@@ -57,7 +57,7 @@ fn verify(req: &Request) -> Result<Response, AuthError> {
 }
 
 pub fn start() {
-    start_server("0.0.0.0:19583", move |request| {
+    start_server("0.0.0.0:19253", move |request| {
         router!(request,
             (GET) (/ping) => {
                 ping(request)
