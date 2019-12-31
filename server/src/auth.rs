@@ -30,6 +30,7 @@ pub enum AuthError {
     Db(DbError),
     Hash(HashError),
     Json(JsonError),
+    InvalidRequest,
 }
 
 impl Error for AuthError {}

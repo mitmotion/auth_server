@@ -6,6 +6,16 @@ use auth_common::{
 use rouille::{router, start_server, Request, Response};
 use std::error::Error;
 
+const USERNAME_MAX_LEN: usize = 32;
+
+fn verify_username(username: &str) -> Result<(), AuthError> {
+    if username.len() > USERNAME_MAX_LEN {
+        Err(AuthError::InvalidRequest)
+    } else {
+        Ok(())
+    }
+}
+
 fn err_handle<E: Error>(f: impl FnOnce() -> Result<Response, E>) -> Response {
     match f() {
         Ok(response) => response,
@@ -36,6 +46,7 @@ fn uuid_to_username(req: &Request) -> Result<Response, AuthError> {
 fn register(req: &Request) -> Result<Response, AuthError> {
     let body = req.data().unwrap();
     let payload: RegisterPayload = serde_json::from_reader(body)?;
+    verify_username(&payload.username)?;
     auth::register(&payload.username, &payload.password)?;
     Ok(Response::text("Ok"))
 }
@@ -43,6 +54,7 @@ fn register(req: &Request) -> Result<Response, AuthError> {
 fn generate_token(req: &Request) -> Result<Response, AuthError> {
     let body = req.data().unwrap();
     let payload: SignInPayload = serde_json::from_reader(body)?;
+    verify_username(&payload.username)?;
     let token = auth::generate_token(&payload.username, &payload.password)?;
     let response = SignInResponse { token };
     Ok(Response::json(&response))
