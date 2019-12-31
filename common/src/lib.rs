@@ -72,3 +72,14 @@ pub struct UuidLookupPayload {
 pub struct UuidLookupResponse {
     pub uuid: Uuid,
 }
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsernameLookupPayload {
+    pub uuid: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsernameLookupResponse {
+    pub username: String,
+}

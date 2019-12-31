@@ -4,6 +4,10 @@ use auth_common::AuthToken;
 use lazy_static::lazy_static;
 use rusqlite::{params, Connection, Error as DbError, NO_PARAMS};
 use uuid::Uuid;
+use std::fmt::Display;
+use enum_display_derive::Display;
+use std::error::Error;
+use serde_json::Error as JsonError;
 
 lazy_static! {
     static ref TOKENS: TimedCache<AuthToken, Uuid> = TimedCache::new();
@@ -17,6 +21,7 @@ fn salt() -> [u8; 16] {
     rand::random::<u128>().to_le_bytes()
 }
 
+#[derive(Debug, Display)]
 pub enum AuthError {
     UserExists,
     UserDoesNotExist,
@@ -24,7 +29,10 @@ pub enum AuthError {
     InvalidToken,
     Db(DbError),
     Hash(HashError),
+    Json(JsonError),
 }
+
+impl Error for AuthError {}
 
 impl From<DbError> for AuthError {
     fn from(err: DbError) -> Self {
@@ -35,6 +43,12 @@ impl From<DbError> for AuthError {
 impl From<HashError> for AuthError {
     fn from(err: HashError) -> Self {
         Self::Hash(err)
+    }
+}
+
+impl From<JsonError> for AuthError {
+    fn from(err: JsonError) -> Self {
+        Self::Json(err)
     }
 }
 
@@ -69,6 +83,18 @@ pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
         .query_map(params![username], |row| row.get::<_, String>("uuid"))?
         .filter_map(|s| s.ok())
         .filter_map(|s| Uuid::parse_str(&s).ok())
+        .next()
+        .ok_or(AuthError::UserDoesNotExist);
+    result
+}
+
+pub fn uuid_to_username(uuid: &Uuid) -> Result<String, AuthError> {
+    let db = db()?;
+    let uuid = uuid.to_simple().to_string();
+    let mut stmt = db.prepare("SELECT uuid, username, pwhash FROM users WHERE uuid == ?1")?;
+    let result = stmt
+        .query_map(params![uuid], |row| row.get::<_, String>("username"))?
+        .filter_map(|s| s.ok())
         .next()
         .ok_or(AuthError::UserDoesNotExist);
     result
@@ -122,15 +148,4 @@ pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
         }
     });
     uuid.ok_or(AuthError::InvalidToken)
-}
-
-pub fn change_password(username: &str, old_password: &str, new_password: &str) -> Result<(), AuthError> {
-    if !is_valid(username, old_password)? {
-        return Err(AuthError::InvalidLogin);
-    }
-
-    let hconfig = argon2::Config::default();
-    let pwhash = argon2::hash_encoded(new_password.as_bytes(), &salt(), &hconfig)?;
-    db()?.execute("UPDATE users SET pwhash = ?1 WHERE username == ?2", params![pwhash, username])?;
-    Ok(())
 }
