@@ -15,7 +15,7 @@ fn net_prehash(s: &str) -> String {
 
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
-    ServerError(reqwest::StatusCode),
+    ServerError(reqwest::StatusCode, String),
     RequestError(reqwest::Error),
     JsonError(serde_json::Error),
 }
@@ -43,7 +43,7 @@ impl AuthClient {
             password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/register", self.provider);
-        let resp = self
+        let mut resp = self
             .http
             .post(&ep)
             .body(serde_json::to_string(&data)?)
@@ -51,7 +51,7 @@ impl AuthClient {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(AuthClientError::ServerError(resp.status()))
+            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
         }
     }
 
@@ -70,7 +70,7 @@ impl AuthClient {
             let data: UuidLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
-            Err(AuthClientError::ServerError(resp.status()))
+            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
         }
     }
 
@@ -87,7 +87,7 @@ impl AuthClient {
             let data: UsernameLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.username)
         } else {
-            Err(AuthClientError::ServerError(resp.status()))
+            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
         }
     }
 
@@ -111,7 +111,7 @@ impl AuthClient {
             let data: SignInResponse = serde_json::from_str(body.as_str())?;
             Ok(data.token)
         } else {
-            Err(AuthClientError::ServerError(resp.status()))
+            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
         }
     }
 
@@ -128,7 +128,7 @@ impl AuthClient {
             let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
-            Err(AuthClientError::ServerError(resp.status()))
+            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
         }
     }
 }
@@ -136,7 +136,7 @@ impl AuthClient {
 impl std::fmt::Display for AuthClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            AuthClientError::ServerError(code) => write!(f, "Server returned {}", code),
+            AuthClientError::ServerError(code, text) => write!(f, "Server returned {} with text {}", code, text),
             AuthClientError::RequestError(err) => write!(f, "Request failed {}", err),
             AuthClientError::JsonError(err) => {
                 write!(f, "failed json serialisation/deserialisation {}", err)
