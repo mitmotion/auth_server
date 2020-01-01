@@ -13,4 +13,3 @@ rust-argon2 = "0.6.1"
 rusqlite = { version = "0.21.0", features = ["bundled"] }
 rand = "0.7.2"
 lazy_static = "1.4.0"
-enum-display-derive = "0.1.0"

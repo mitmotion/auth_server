@@ -43,7 +43,7 @@ fn ratelimit(
 
 fn remote(req: &Request) -> IpAddr {
     req.header("X-Real-IP")
-        .map(|ip| ip.parse().expect("Malformed IP header."))
+        .map(|ip| ip.parse().unwrap_or(req.remote_addr().ip()))
         .unwrap_or(req.remote_addr().ip())
 }
 

@@ -1,12 +1,11 @@
 use crate::cache::TimedCache;
 use argon2::Error as HashError;
 use auth_common::AuthToken;
-use enum_display_derive::Display;
 use lazy_static::lazy_static;
 use rusqlite::{params, Connection, Error as DbError, NO_PARAMS};
 use serde_json::Error as JsonError;
 use std::error::Error;
-use std::fmt::Display;
+use std::fmt;
 use uuid::Uuid;
 
 lazy_static! {
@@ -21,7 +20,7 @@ fn salt() -> [u8; 16] {
     rand::random::<u128>().to_le_bytes()
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug)]
 pub enum AuthError {
     UserExists,
     UserDoesNotExist,
@@ -32,6 +31,28 @@ pub enum AuthError {
     Json(JsonError),
     InvalidRequest,
     RateLimit,
+}
+
+impl fmt::Display for AuthError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::UserExists => "That username is already taken.".into(),
+                Self::UserDoesNotExist => "That user does not exist.".into(),
+                Self::InvalidLogin =>
+                    "The username + password combination was incorrect or the user does not exist."
+                        .into(),
+                Self::InvalidToken => "The given token is invalid.".into(),
+                Self::Db(err) => format!("Database error: {}", err),
+                Self::Hash(err) => format!("Error securely storing password: {}", err),
+                Self::Json(err) => format!("Error decoding JSON: {}", err),
+                Self::InvalidRequest => "The request was invalid in some form.".into(),
+                Self::RateLimit => "You are sending too many requests. Please slow down.".into(),
+            }
+        )
+    }
 }
 
 impl Error for AuthError {}
