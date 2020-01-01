@@ -42,7 +42,7 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let ep = format!("{}/api/v1/register", self.provider);
+        let ep = format!("{}/register", self.provider);
         let resp = self
             .http
             .post(&ep)
@@ -59,7 +59,7 @@ impl AuthClient {
         let data = UuidLookupPayload {
             username: username.as_ref().to_owned(),
         };
-        let ep = format!("{}/api/v1/username_to_uuid", self.provider);
+        let ep = format!("{}/username_to_uuid", self.provider);
         let mut resp = self
             .http
             .post(&ep)
@@ -76,7 +76,7 @@ impl AuthClient {
 
     pub fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
         let data = UsernameLookupPayload { uuid };
-        let ep = format!("{}/api/v1/uuid_to_username", self.provider);
+        let ep = format!("{}/uuid_to_username", self.provider);
         let mut resp = self
             .http
             .post(&ep)
@@ -100,7 +100,7 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let ep = format!("{}/api/v1/generate_token", self.provider);
+        let ep = format!("{}/generate_token", self.provider);
         let mut resp = self
             .http
             .post(&ep)
@@ -117,7 +117,7 @@ impl AuthClient {
 
     pub fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
         let data = ValidityCheckPayload { token };
-        let ep = format!("{}/api/v1/verify", self.provider);
+        let ep = format!("{}/verify", self.provider);
         let mut resp = self
             .http
             .post(&ep)

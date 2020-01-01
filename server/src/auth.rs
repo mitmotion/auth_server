@@ -127,7 +127,7 @@ pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
     let hconfig = argon2::Config::default();
     let pwhash = argon2::hash_encoded(password.as_bytes(), &salt(), &hconfig)?;
     db()?.execute(
-        "INSERT INTO users (uuid, username, pwhash) VALUES(?1, ?2, ?2)",
+        "INSERT INTO users (uuid, username, pwhash) VALUES(?1, ?2, ?3)",
         params![uuid, username, pwhash],
     )?;
     Ok(())
