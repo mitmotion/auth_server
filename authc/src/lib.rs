@@ -22,14 +22,14 @@ pub enum AuthClientError {
 }
 
 pub struct AuthClient {
-    http: reqwest::Client,
+    http: reqwest::blocking::Client,
     provider: String,
 }
 
 impl AuthClient {
     pub fn new<T: ToString>(provider: T) -> Self {
         Self {
-            http: reqwest::Client::new(),
+            http: reqwest::blocking::Client::new(),
             provider: provider.to_string(),
         }
     }
@@ -44,7 +44,7 @@ impl AuthClient {
             password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/register", self.provider);
-        let mut resp = self
+        let resp = self
             .http
             .post(&ep)
             .body(serde_json::to_string(&data)?)
@@ -52,7 +52,10 @@ impl AuthClient {
         if resp.status().is_success() {
             Ok(())
         } else {
-            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
+            Err(AuthClientError::ServerError(
+                resp.status(),
+                resp.text().unwrap(),
+            ))
         }
     }
 
@@ -61,7 +64,7 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
         };
         let ep = format!("{}/username_to_uuid", self.provider);
-        let mut resp = self
+        let resp = self
             .http
             .post(&ep)
             .body(serde_json::to_string(&data)?)
@@ -71,14 +74,17 @@ impl AuthClient {
             let data: UuidLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
-            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
+            Err(AuthClientError::ServerError(
+                resp.status(),
+                resp.text().unwrap(),
+            ))
         }
     }
 
     pub fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
         let data = UsernameLookupPayload { uuid };
         let ep = format!("{}/uuid_to_username", self.provider);
-        let mut resp = self
+        let resp = self
             .http
             .post(&ep)
             .body(serde_json::to_string(&data)?)
@@ -88,7 +94,10 @@ impl AuthClient {
             let data: UsernameLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.username)
         } else {
-            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
+            Err(AuthClientError::ServerError(
+                resp.status(),
+                resp.text().unwrap(),
+            ))
         }
     }
 
@@ -102,7 +111,7 @@ impl AuthClient {
             password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/generate_token", self.provider);
-        let mut resp = self
+        let resp = self
             .http
             .post(&ep)
             .body(serde_json::to_string(&data)?)
@@ -112,14 +121,17 @@ impl AuthClient {
             let data: SignInResponse = serde_json::from_str(body.as_str())?;
             Ok(data.token)
         } else {
-            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
+            Err(AuthClientError::ServerError(
+                resp.status(),
+                resp.text().unwrap(),
+            ))
         }
     }
 
     pub fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
         let data = ValidityCheckPayload { token };
         let ep = format!("{}/verify", self.provider);
-        let mut resp = self
+        let resp = self
             .http
             .post(&ep)
             .body(serde_json::to_string(&data)?)
@@ -129,7 +141,10 @@ impl AuthClient {
             let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
-            Err(AuthClientError::ServerError(resp.status(), resp.text().unwrap()))
+            Err(AuthClientError::ServerError(
+                resp.status(),
+                resp.text().unwrap(),
+            ))
         }
     }
 }
@@ -137,7 +152,9 @@ impl AuthClient {
 impl std::fmt::Display for AuthClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            AuthClientError::ServerError(code, text) => write!(f, "Server returned {} with text {}", code, text),
+            AuthClientError::ServerError(code, text) => {
+                write!(f, "Server returned {} with text {}", code, text)
+            }
             AuthClientError::RequestError(err) => write!(f, "Request failed {}", err),
             AuthClientError::JsonError(err) => {
                 write!(f, "failed json serialisation/deserialisation {}", err)
