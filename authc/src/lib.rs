@@ -13,6 +13,7 @@ fn net_prehash(s: &str) -> String {
     hex::encode(&b[..])
 }
 
+#[derive(Debug)]
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
     ServerError(reqwest::StatusCode, String),
