@@ -120,6 +120,6 @@ pub fn start() {
             },
 
             _ => Response::empty_404()
-        )
+        ).with_unique_header("Access-Control-Allow-Origin", "*")
     });
 }
