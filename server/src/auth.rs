@@ -33,6 +33,22 @@ pub enum AuthError {
     RateLimit,
 }
 
+impl AuthError {
+    pub fn status_code(&self) -> u16 {
+        match self {
+            Self::UserExists => 400,
+            Self::UserDoesNotExist => 400,
+            Self::InvalidLogin => 400,
+            Self::InvalidToken => 400,
+            Self::Db(_) => 500,
+            Self::Hash(_) => 500,
+            Self::Json(_) => 400,
+            Self::InvalidRequest => 400,
+            Self::RateLimit => 429,
+        }
+    }
+}
+
 impl fmt::Display for AuthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

@@ -6,7 +6,6 @@ use auth_common::{
 };
 use lazy_static::lazy_static;
 use rouille::{router, start_server, Request, Response};
-use std::error::Error;
 use std::net::IpAddr;
 
 lazy_static! {
@@ -23,10 +22,10 @@ fn verify_username(username: &str) -> Result<(), AuthError> {
     }
 }
 
-fn err_handle<E: Error>(f: impl FnOnce() -> Result<Response, E>) -> Response {
+fn err_handle(f: impl FnOnce() -> Result<Response, AuthError>) -> Response {
     match f() {
         Ok(response) => response,
-        Err(err) => Response::text(format!("{}", err)).with_status_code(500),
+        Err(err) => Response::text(format!("{}", err)).with_status_code(err.status_code()),
     }
 }
 
@@ -120,6 +119,7 @@ pub fn start() {
             },
 
             _ => Response::empty_404()
-        ).with_unique_header("Access-Control-Allow-Origin", "*")
+        )
+        .with_unique_header("Access-Control-Allow-Origin", "*")
     });
 }
