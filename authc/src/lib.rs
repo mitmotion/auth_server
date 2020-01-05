@@ -3,14 +3,14 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
-use sha3::{Digest, Sha3_512};
+use argon2::Config;
 pub use uuid::Uuid;
 
-fn net_prehash(s: &str) -> String {
-    let mut hasher = Sha3_512::new();
-    hasher.input(s.as_bytes());
-    let b = hasher.result();
-    hex::encode(&b[..])
+fn net_prehash(password: &str) -> String {
+    let salt = fxhash::hash64(password);
+    let config = Config::default();
+    let bytes = argon2::hash_raw(password.as_bytes(), &salt.to_le_bytes(), &config).unwrap();
+    hex::encode(&bytes)
 }
 
 #[derive(Debug)]
