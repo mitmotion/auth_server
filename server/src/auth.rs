@@ -29,7 +29,7 @@ pub enum AuthError {
     Db(DbError),
     Hash(HashError),
     Json(JsonError),
-    InvalidRequest,
+    InvalidRequest(String),
     RateLimit,
 }
 
@@ -43,7 +43,7 @@ impl AuthError {
             Self::Db(_) => 500,
             Self::Hash(_) => 500,
             Self::Json(_) => 400,
-            Self::InvalidRequest => 400,
+            Self::InvalidRequest(_) => 400,
             Self::RateLimit => 429,
         }
     }
@@ -64,7 +64,8 @@ impl fmt::Display for AuthError {
                 Self::Db(err) => format!("Database error: {}", err),
                 Self::Hash(err) => format!("Error securely storing password: {}", err),
                 Self::Json(err) => format!("Error decoding JSON: {}", err),
-                Self::InvalidRequest => "The request was invalid in some form.".into(),
+                Self::InvalidRequest(s) =>
+                    format!("The request was invalid in some form. Reason: {}", s),
                 Self::RateLimit => "You are sending too many requests. Please slow down.".into(),
             }
         )

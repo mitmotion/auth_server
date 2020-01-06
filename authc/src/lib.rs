@@ -1,9 +1,9 @@
+use argon2::Config;
 pub use auth_common::AuthToken;
 use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
-use argon2::Config;
 pub use uuid::Uuid;
 
 fn net_prehash(password: &str) -> String {

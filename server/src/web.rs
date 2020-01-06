@@ -12,12 +12,28 @@ lazy_static! {
     static ref RATELIMITER: RateLimiter = RateLimiter::new();
 }
 
-const USERNAME_MAX_LEN: usize = 32;
+fn legal_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || ['-', '_'].contains(&c)
+}
 
 fn verify_username(username: &str) -> Result<(), AuthError> {
-    if username.len() > USERNAME_MAX_LEN {
-        Err(AuthError::InvalidRequest)
+    if username.len() >= 32 && username.len() <= 3 {
+        Err(AuthError::InvalidRequest(
+            "Username must be between 3 and 32 characters inclusive.".into(),
+        ))
     } else {
+        let mut is_legal = true;
+        for c in username.chars() {
+            if !legal_char(c) {
+                is_legal = false;
+            }
+        }
+        if !is_legal {
+            return Err(AuthError::InvalidRequest(
+                "Illegal character in username.".into(),
+            ));
+        }
+
         Ok(())
     }
 }
