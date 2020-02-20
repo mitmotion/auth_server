@@ -17,32 +17,21 @@ fn legal_char(c: char) -> bool {
 }
 
 fn verify_username(username: &str) -> Result<(), AuthError> {
-    if username.len() >= 32 && username.len() <= 3 {
+    if !(0..=32).contains(&username.len()) {
         Err(AuthError::InvalidRequest(
             "Username must be between 3 and 32 characters inclusive.".into(),
         ))
+    } else if !username.chars().all(legal_char) {
+        Err(AuthError::InvalidRequest(
+            "Illegal character in username.".into(),
+        ))
     } else {
-        let mut is_legal = true;
-        for c in username.chars() {
-            if !legal_char(c) {
-                is_legal = false;
-            }
-        }
-        if !is_legal {
-            return Err(AuthError::InvalidRequest(
-                "Illegal character in username.".into(),
-            ));
-        }
-
         Ok(())
     }
 }
 
 fn err_handle(f: impl FnOnce() -> Result<Response, AuthError>) -> Response {
-    match f() {
-        Ok(response) => response,
-        Err(err) => Response::text(format!("{}", err)).with_status_code(err.status_code()),
-    }
+    f().unwrap_or_else(|err| Response::text(format!("{}", err)).with_status_code(err.status_code()))
 }
 
 fn ratelimit(

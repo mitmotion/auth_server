@@ -176,13 +176,9 @@ pub fn generate_token(username: &str, password: &str) -> Result<AuthToken, AuthE
 
 pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
     let mut uuid = None;
-    TOKENS.run(&token, |maybe_entry| {
-        if let Some(entry) = maybe_entry {
-            uuid = Some(entry.data.clone());
-            false
-        } else {
-            false
-        }
+    TOKENS.run(&token, |entry| {
+        uuid = entry.map(|e| e.data.clone());
+        false
     });
     uuid.ok_or(AuthError::InvalidToken)
 }

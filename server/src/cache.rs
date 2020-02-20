@@ -15,12 +15,11 @@ fn work_clean(map: Arc<Mutex<HashMap<AuthToken, TimedCacheEntry>>>) {
     loop {
         thread::sleep(Duration::from_secs(60));
 
-        // We want to panic and restart if the authtoken cache is poisoned which should never happen.
-        let mut map = map
+        map
             .lock()
-            .expect("AuthToken cache has been poisoned. Panicking to restart.");
-
-        map.retain(|_, v| v.timestamp.elapsed() < Duration::from_secs(15));
+            // Panic and restart if the authtoken cache is poisoned which should never happen.
+            .expect("AuthToken cache has been poisoned. Panicking to restart.")
+            .retain(|_, v| v.timestamp.elapsed() < Duration::from_secs(15));
     }
 }
 
@@ -39,13 +38,12 @@ impl TimedCache {
     }
 
     pub fn insert(&self, k: AuthToken, v: Uuid) {
-        // We want to panic and restart if the authtoken cache is poisoned which should never happen.
-        let mut inner = self
+        self
             .inner
             .lock()
-            .expect("AuthToken cache has been poisoned. Panicking to restart.");
-
-        inner.insert(
+            // Panic and restart if the authtoken cache is poisoned which should never happen.
+            .expect("AuthToken cache has been poisoned. Panicking to restart.")
+            .insert(
             k,
             TimedCacheEntry {
                 timestamp: Instant::now(),
@@ -55,10 +53,10 @@ impl TimedCache {
     }
 
     pub fn run(&self, k: &AuthToken, f: impl FnOnce(Option<&mut TimedCacheEntry>) -> bool) {
-        // We want to panic and restart if the authtoken cache is poisoned which should never happen.
         let mut inner = self
             .inner
             .lock()
+            // Panic and restart if the authtoken cache is poisoned which should never happen.
             .expect("AuthToken cache has been poisoned. Panicking to restart.");
 
         let v = inner.get_mut(k);
