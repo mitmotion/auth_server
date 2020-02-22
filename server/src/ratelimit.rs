@@ -22,10 +22,10 @@ impl RateLimiter {
             return true;
         }
 
-        // We want to panic and restart if the authtoken cache is poisoned which should never happen.
         let mut limits = self
             .limits
             .lock()
+            // Panic and restart if the authtoken cache is poisoned which should never happen.
             .expect("AuthToken cache has been poisoned. Panicking to restart.");
 
         let v = limits.entry(addr).or_default();

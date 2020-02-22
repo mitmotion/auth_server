@@ -20,6 +20,10 @@ fn salt() -> [u8; 16] {
     rand::random::<u128>().to_le_bytes()
 }
 
+fn decapitalize(string: &str) -> String {
+    string.chars().flat_map(char::to_lowercase).collect()
+}
+
 #[derive(Debug)]
 pub enum AuthError {
     UserExists,
@@ -96,8 +100,9 @@ pub fn init_db() -> Result<(), AuthError> {
     db()?.execute(
         "
         CREATE TABLE IF NOT EXISTS users (
-            uuid TEXT PRIMARY KEY,
+            uuid TEXT NOT NULL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
+            display_username TEXT NOT NULL UNIQUE,
             pwhash TEXT NOT NULL
         )
     ",
@@ -112,11 +117,12 @@ fn user_exists(username: &str) -> Result<bool, AuthError> {
     Ok(stmt.exists(params![username])?)
 }
 
-pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
+pub fn username_to_uuid(username_unfiltered: &str) -> Result<Uuid, AuthError> {
+    let username = decapitalize(username_unfiltered);
     let db = db()?;
-    let mut stmt = db.prepare("SELECT uuid FROM users WHERE username == ?1")?;
+    let mut stmt = db.prepare_cached("SELECT uuid FROM users WHERE username == ?1")?;
     let result = stmt
-        .query_map(params![username], |row| row.get::<_, String>(0))?
+        .query_map(params![&username], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
         .filter_map(|s| Uuid::parse_str(&s).ok())
         .next()
@@ -127,7 +133,7 @@ pub fn username_to_uuid(username: &str) -> Result<Uuid, AuthError> {
 pub fn uuid_to_username(uuid: &Uuid) -> Result<String, AuthError> {
     let db = db()?;
     let uuid = uuid.to_simple().to_string();
-    let mut stmt = db.prepare("SELECT username FROM users WHERE uuid == ?1")?;
+    let mut stmt = db.prepare_cached("SELECT display_username FROM users WHERE uuid == ?1")?;
     let result = stmt
         .query_map(params![uuid], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
@@ -136,16 +142,17 @@ pub fn uuid_to_username(uuid: &Uuid) -> Result<String, AuthError> {
     result
 }
 
-pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
-    if user_exists(username)? {
+pub fn register(username_unfiltered: &str, password: &str) -> Result<(), AuthError> {
+    let username = decapitalize(username_unfiltered);
+    if user_exists(&username)? {
         return Err(AuthError::UserExists);
     }
     let uuid = Uuid::new_v4().to_simple().to_string();
     let hconfig = argon2::Config::default();
     let pwhash = argon2::hash_encoded(password.as_bytes(), &salt(), &hconfig)?;
     db()?.execute(
-        "INSERT INTO users (uuid, username, pwhash) VALUES(?1, ?2, ?3)",
-        params![uuid, username, pwhash],
+        "INSERT INTO users (uuid, username, display_username, pwhash) VALUES(?1, ?2, ?3, ?4)",
+        params![uuid, &username, username_unfiltered, pwhash],
     )?;
     Ok(())
 }
@@ -153,9 +160,9 @@ pub fn register(username: &str, password: &str) -> Result<(), AuthError> {
 /// Checks if the password is correct and that the user exists.
 fn is_valid(username: &str, password: &str) -> Result<bool, AuthError> {
     let db = db()?;
-    let mut stmt = db.prepare("SELECT pwhash FROM users WHERE username == ?1")?;
+    let mut stmt = db.prepare_cached("SELECT pwhash FROM users WHERE username == ?1")?;
     let result = stmt
-        .query_map(params![username], |row| row.get::<_, String>(0))?
+        .query_map(params![&username], |row| row.get::<_, String>(0))?
         .filter_map(|s| s.ok())
         .filter_map(|correct| argon2::verify_encoded(&correct, password.as_bytes()).ok())
         .next()
@@ -163,12 +170,13 @@ fn is_valid(username: &str, password: &str) -> Result<bool, AuthError> {
     result
 }
 
-pub fn generate_token(username: &str, password: &str) -> Result<AuthToken, AuthError> {
-    if !is_valid(username, password)? {
+pub fn generate_token(username_unfiltered: &str, password: &str) -> Result<AuthToken, AuthError> {
+    let username = decapitalize(username_unfiltered);
+    if !is_valid(&username, password)? {
         return Err(AuthError::InvalidLogin);
     }
 
-    let uuid = username_to_uuid(username)?;
+    let uuid = username_to_uuid(&username)?;
     let token = AuthToken::generate();
     TOKENS.insert(token, uuid);
     Ok(token)
@@ -176,13 +184,9 @@ pub fn generate_token(username: &str, password: &str) -> Result<AuthToken, AuthE
 
 pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
     let mut uuid = None;
-    TOKENS.run(&token, |maybe_entry| {
-        if let Some(entry) = maybe_entry {
-            uuid = Some(entry.data.clone());
-            false
-        } else {
-            false
-        }
+    TOKENS.run(&token, |entry| {
+        uuid = entry.map(|e| e.data.clone());
+        false
     });
     uuid.ok_or(AuthError::InvalidToken)
 }
