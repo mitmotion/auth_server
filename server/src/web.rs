@@ -5,7 +5,7 @@ use auth_common::{
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
 use lazy_static::lazy_static;
-use rouille::{router, start_server, Request, Response};
+use rouille::{start_server, Request, Response};
 use std::net::IpAddr;
 
 lazy_static! {
@@ -28,10 +28,6 @@ fn verify_username(username: &str) -> Result<(), AuthError> {
     } else {
         Ok(())
     }
-}
-
-fn err_handle(f: impl FnOnce() -> Result<Response, AuthError>) -> Response {
-    f().unwrap_or_else(|err| Response::text(format!("{}", err)).with_status_code(err.status_code()))
 }
 
 fn ratelimit(
@@ -98,33 +94,30 @@ fn verify(req: &Request) -> Result<Response, AuthError> {
 
 pub fn start() {
     start_server("0.0.0.0:19253", move |request| {
-        router!(request,
-            (GET) (/ping) => {
-                ping(request)
-            },
+        let path = request.raw_url().split('?').next().unwrap();
 
-            (POST) (/username_to_uuid) => {
-                err_handle(|| username_to_uuid(request))
-            },
+        let response = match (request.method(), path) {
+            ("GET", "/ping") => ping(request),
+            ("POST", path) => {
+                let result = match path {
+                    "/username_to_uuid" => username_to_uuid(request),
+                    "/uuid_to_username" => uuid_to_username(request),
+                    "/register" => ratelimit(request, register),
+                    "/generate_token" => ratelimit(request, generate_token),
+                    "/verify" => verify(request),
+                    _ => Ok(Response::empty_404()),
+                };
 
-            (POST) (/uuid_to_username) => {
-                err_handle(|| uuid_to_username(request))
-            },
+                match result {
+                    Ok(response) => response,
+                    Err(err) => {
+                        Response::text(format!("{}", err)).with_status_code(err.status_code())
+                    }
+                }
+            }
+            _ => Response::empty_404(),
+        };
 
-            (POST) (/register) => {
-                err_handle(|| ratelimit(request, register))
-            },
-
-            (POST) (/generate_token) => {
-                err_handle(|| ratelimit(request, generate_token))
-            },
-
-            (POST) (/verify) => {
-                err_handle(|| verify(request))
-            },
-
-            _ => Response::empty_404()
-        )
-        .with_unique_header("Access-Control-Allow-Origin", "*")
+        response.with_unique_header("Access-Control-Allow-Origin", "*")
     });
 }
