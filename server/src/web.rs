@@ -5,6 +5,7 @@ use auth_common::{
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
 use lazy_static::lazy_static;
+use log::*;
 use rouille::{start_server, Request, Response};
 use std::net::IpAddr;
 
@@ -93,7 +94,12 @@ fn verify(req: &Request) -> Result<Response, AuthError> {
 }
 
 pub fn start() {
-    start_server("0.0.0.0:19253", move |request| {
+    let addr = "0.0.0.0:19253";
+    debug!("Starting webserver on {}", addr);
+
+    start_server(addr, move |request| {
+        debug!("[{}] -> {}", request.remote_addr().ip(), request.url());
+
         let path = request.raw_url().split('?').next().unwrap();
 
         let response = match (request.method(), path) {
@@ -111,6 +117,8 @@ pub fn start() {
                 match result {
                     Ok(response) => response,
                     Err(err) => {
+                        info!("[{}:{}] rejected: {}", remote(request), path, err);
+
                         Response::text(format!("{}", err)).with_status_code(err.status_code())
                     }
                 }
