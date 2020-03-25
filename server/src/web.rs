@@ -98,7 +98,7 @@ pub fn start() {
     debug!("Starting webserver on {}", addr);
 
     start_server(addr, move |request| {
-        debug!("[{}] -> {}", request.remote_addr().ip(), request.url());
+        debug!("[{}] -> {}", remote(request), request.url());
 
         let path = request.raw_url().split('?').next().unwrap();
 
