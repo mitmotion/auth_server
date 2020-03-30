@@ -18,7 +18,7 @@ fn legal_char(c: char) -> bool {
 }
 
 fn verify_username(username: &str) -> Result<(), AuthError> {
-    if !(0..=32).contains(&username.len()) {
+    if !(3..=32).contains(&username.len()) {
         Err(AuthError::InvalidRequest(
             "Username must be between 3 and 32 characters inclusive.".into(),
         ))
