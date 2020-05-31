@@ -7,13 +7,30 @@ use serde_json::Error as JsonError;
 use std::error::Error;
 use std::fmt;
 use uuid::Uuid;
+use std::{env, path::PathBuf};
 
 lazy_static! {
     static ref TOKENS: TimedCache = TimedCache::new();
 }
 
+fn apply_db_dir_override(db_dir: &str) -> String {
+    if let Some(val) = env::var_os("AUTH_DB_DIR") {
+        let path = PathBuf::from(val);
+        if path.exists() || path.parent().map(|x| x.exists()).unwrap_or(false) {
+            // Only allow paths with valid unicode characters
+            match path.to_str() {
+                Some(path) => return path.to_owned(),
+                None => {},
+            }
+        }
+        log::warn!("AUTH_DB_DIR is an invalid path.");
+    }
+    db_dir.to_string()
+}
+
 fn db() -> Result<Connection, AuthError> {
-    Ok(Connection::open("/opt/veloren-auth/data/auth.db")?)
+    let db_dir = &apply_db_dir_override("/opt/veloren-auth/data/auth.db");
+    Ok(Connection::open(db_dir)?)
 }
 
 fn salt() -> [u8; 16] {
