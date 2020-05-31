@@ -17,9 +17,8 @@ fn net_prehash(password: &str) -> String {
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
     ServerError(u16, String),
-    RequestError(u16),
+    RequestError(),
     JsonError(serde_json::Error),
-    IoError(),
 }
 
 pub struct AuthClient {
@@ -151,12 +150,9 @@ impl std::fmt::Display for AuthClientError {
             AuthClientError::ServerError(code, text) => {
                 write!(f, "Server returned {} with text {}", code, text)
             }
-            AuthClientError::RequestError(err) => write!(f, "Request failed {}", err),
+            AuthClientError::RequestError() => write!(f, "Request failed"),
             AuthClientError::JsonError(err) => {
                 write!(f, "failed json serialisation/deserialisation {}", err)
-            },
-            AuthClientError::IoError() => {
-                write!(f, "failed reading response from server")
             }
         }
     }
@@ -170,6 +166,6 @@ impl From<serde_json::Error> for AuthClientError {
 
 impl From<std::io::Error> for AuthClientError {
     fn from(_err: std::io::Error) -> Self {
-        AuthClientError::IoError()
+        AuthClientError::RequestError()
     }
 }
