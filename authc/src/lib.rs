@@ -16,20 +16,20 @@ fn net_prehash(password: &str) -> String {
 #[derive(Debug)]
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
-    ServerError(reqwest::StatusCode, String),
-    RequestError(reqwest::Error),
+    ServerError(u16, String),
+    RequestError(),
     JsonError(serde_json::Error),
 }
 
 pub struct AuthClient {
-    http: reqwest::blocking::Client,
+    agent: ureq::Agent,
     provider: String,
 }
 
 impl AuthClient {
     pub fn new<T: ToString>(provider: T) -> Self {
         Self {
-            http: reqwest::blocking::Client::new(),
+            agent: ureq::agent(),
             provider: provider.to_string(),
         }
     }
@@ -45,16 +45,15 @@ impl AuthClient {
         };
         let ep = format!("{}/register", self.provider);
         let resp = self
-            .http
+            .agent
             .post(&ep)
-            .body(serde_json::to_string(&data)?)
-            .send()?;
-        if resp.status().is_success() {
+            .send_string(serde_json::to_string(&data)?.as_str());
+        if resp.ok() {
             Ok(())
         } else {
             Err(AuthClientError::ServerError(
                 resp.status(),
-                resp.text().unwrap(),
+                resp.into_string().unwrap(),
             ))
         }
     }
@@ -65,18 +64,17 @@ impl AuthClient {
         };
         let ep = format!("{}/username_to_uuid", self.provider);
         let resp = self
-            .http
+            .agent
             .post(&ep)
-            .body(serde_json::to_string(&data)?)
-            .send()?;
-        if resp.status().is_success() {
-            let body = resp.text()?;
+            .send_string(serde_json::to_string(&data)?.as_str());
+        if resp.ok() {
+            let body = resp.into_string()?;
             let data: UuidLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
             Err(AuthClientError::ServerError(
                 resp.status(),
-                resp.text().unwrap(),
+                resp.into_string().unwrap(),
             ))
         }
     }
@@ -85,18 +83,17 @@ impl AuthClient {
         let data = UsernameLookupPayload { uuid };
         let ep = format!("{}/uuid_to_username", self.provider);
         let resp = self
-            .http
+            .agent
             .post(&ep)
-            .body(serde_json::to_string(&data)?)
-            .send()?;
-        if resp.status().is_success() {
-            let body = resp.text()?;
+            .send_string(serde_json::to_string(&data)?.as_str());
+        if resp.ok() {
+            let body = resp.into_string()?;
             let data: UsernameLookupResponse = serde_json::from_str(body.as_str())?;
             Ok(data.username)
         } else {
             Err(AuthClientError::ServerError(
                 resp.status(),
-                resp.text().unwrap(),
+                resp.into_string().unwrap(),
             ))
         }
     }
@@ -112,18 +109,17 @@ impl AuthClient {
         };
         let ep = format!("{}/generate_token", self.provider);
         let resp = self
-            .http
+            .agent
             .post(&ep)
-            .body(serde_json::to_string(&data)?)
-            .send()?;
-        if resp.status().is_success() {
-            let body = resp.text()?;
+            .send_string(serde_json::to_string(&data)?.as_str());
+        if resp.ok() {
+            let body = resp.into_string()?;
             let data: SignInResponse = serde_json::from_str(body.as_str())?;
             Ok(data.token)
         } else {
             Err(AuthClientError::ServerError(
                 resp.status(),
-                resp.text().unwrap(),
+                resp.into_string().unwrap(),
             ))
         }
     }
@@ -132,18 +128,17 @@ impl AuthClient {
         let data = ValidityCheckPayload { token };
         let ep = format!("{}/verify", self.provider);
         let resp = self
-            .http
+            .agent
             .post(&ep)
-            .body(serde_json::to_string(&data)?)
-            .send()?;
-        if resp.status().is_success() {
-            let body = resp.text()?;
+            .send_string(serde_json::to_string(&data)?.as_str());
+        if resp.ok() {
+            let body = resp.into_string()?;
             let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
             Ok(data.uuid)
         } else {
             Err(AuthClientError::ServerError(
                 resp.status(),
-                resp.text().unwrap(),
+                resp.into_string().unwrap(),
             ))
         }
     }
@@ -155,7 +150,7 @@ impl std::fmt::Display for AuthClientError {
             AuthClientError::ServerError(code, text) => {
                 write!(f, "Server returned {} with text {}", code, text)
             }
-            AuthClientError::RequestError(err) => write!(f, "Request failed {}", err),
+            AuthClientError::RequestError() => write!(f, "Request failed"),
             AuthClientError::JsonError(err) => {
                 write!(f, "failed json serialisation/deserialisation {}", err)
             }
@@ -163,14 +158,14 @@ impl std::fmt::Display for AuthClientError {
     }
 }
 
-impl From<reqwest::Error> for AuthClientError {
-    fn from(err: reqwest::Error) -> Self {
-        AuthClientError::RequestError(err)
-    }
-}
-
 impl From<serde_json::Error> for AuthClientError {
     fn from(err: serde_json::Error) -> Self {
         AuthClientError::JsonError(err)
+    }
+}
+
+impl From<std::io::Error> for AuthClientError {
+    fn from(_err: std::io::Error) -> Self {
+        AuthClientError::RequestError()
     }
 }
