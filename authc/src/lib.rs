@@ -17,7 +17,7 @@ fn net_prehash(password: &str) -> String {
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
     ServerError(u16, String),
-    RequestError(),
+    RequestError,
     JsonError(serde_json::Error),
 }
 
