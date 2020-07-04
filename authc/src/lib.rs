@@ -150,7 +150,7 @@ impl std::fmt::Display for AuthClientError {
             AuthClientError::ServerError(code, text) => {
                 write!(f, "Server returned {} with text {}", code, text)
             }
-            AuthClientError::RequestError() => write!(f, "Request failed"),
+            AuthClientError::RequestError => write!(f, "Request failed"),
             AuthClientError::JsonError(err) => {
                 write!(f, "failed json serialisation/deserialisation {}", err)
             }
@@ -166,6 +166,6 @@ impl From<serde_json::Error> for AuthClientError {
 
 impl From<std::io::Error> for AuthClientError {
     fn from(_err: std::io::Error) -> Self {
-        AuthClientError::RequestError()
+        AuthClientError::RequestError
     }
 }
