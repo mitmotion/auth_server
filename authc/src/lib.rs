@@ -22,14 +22,14 @@ pub enum AuthClientError {
 }
 
 pub struct AuthClient {
-    agent: ureq::Agent,
+    _agent: ureq::Agent,
     provider: String,
 }
 
 impl AuthClient {
     pub fn new<T: ToString>(provider: T) -> Self {
         Self {
-            agent: ureq::agent(),
+            _agent: ureq::agent(),
             provider: provider.to_string(),
         }
     }
@@ -44,10 +44,7 @@ impl AuthClient {
             password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/register", self.provider);
-        let resp = self
-            .agent
-            .post(&ep)
-            .send_string(serde_json::to_string(&data)?.as_str());
+        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
         check_response(resp)?;
         Ok(())
     }
@@ -57,10 +54,7 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
         };
         let ep = format!("{}/username_to_uuid", self.provider);
-        let resp = self
-            .agent
-            .post(&ep)
-            .send_string(serde_json::to_string(&data)?.as_str());
+        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
 
         let resp = check_response(resp)?;
         let body = resp.into_string()?;
@@ -71,10 +65,7 @@ impl AuthClient {
     pub fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
         let data = UsernameLookupPayload { uuid };
         let ep = format!("{}/uuid_to_username", self.provider);
-        let resp = self
-            .agent
-            .post(&ep)
-            .send_string(serde_json::to_string(&data)?.as_str());
+        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
         let resp = check_response(resp)?;
         let body = resp.into_string()?;
         let data: UsernameLookupResponse = serde_json::from_str(body.as_str())?;
@@ -91,10 +82,7 @@ impl AuthClient {
             password: net_prehash(password.as_ref()),
         };
         let ep = format!("{}/generate_token", self.provider);
-        let resp = self
-            .agent
-            .post(&ep)
-            .send_string(serde_json::to_string(&data)?.as_str());
+        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
         let resp = check_response(resp)?;
         let body = resp.into_string()?;
         let data: SignInResponse = serde_json::from_str(body.as_str())?;
@@ -104,10 +92,7 @@ impl AuthClient {
     pub fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
         let data = ValidityCheckPayload { token };
         let ep = format!("{}/verify", self.provider);
-        let resp = self
-            .agent
-            .post(&ep)
-            .send_string(serde_json::to_string(&data)?.as_str());
+        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
         let resp = check_response(resp)?;
         let body = resp.into_string()?;
         let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
