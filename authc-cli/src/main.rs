@@ -1,5 +1,6 @@
 use authc::{AuthClient, AuthToken};
 use clap::{load_yaml, App};
+use http::uri::Authority;
 
 #[tokio::main]
 async fn main() {
@@ -63,10 +64,13 @@ async fn main() {
 }
 
 fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
-    match args.value_of("auth") {
-        Some(server) => AuthClient::new(server).expect("Invalid auth server url!"),
-        _ => AuthClient::new("https://auth.veloren.net").unwrap(), // Always valid url
-    }
+    let authority = match args.value_of("auth") {
+        Some(server) => {
+            Authority::from_maybe_shared(server.to_string()).expect("Invalid auth server url!")
+        }
+        _ => Authority::from_maybe_shared("auth.veloren.net").unwrap(), // Always valid url
+    };
+    AuthClient::new(authority)
 }
 
 fn get_arg<T: std::fmt::Display>(args: &clap::ArgMatches, arg: T, error_msg: T) -> String

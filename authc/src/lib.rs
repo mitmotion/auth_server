@@ -4,7 +4,9 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
-use reqwest::{IntoUrl, Url};
+use http::uri::Authority;
+use http::Request;
+use hyper::{body::to_bytes, client, Body, Uri};
 pub use uuid::Uuid;
 
 fn net_prehash(password: &str) -> String {
@@ -17,21 +19,46 @@ fn net_prehash(password: &str) -> String {
 #[derive(Debug)]
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
-    ServerError(u16, String),
-    RequestError(reqwest::Error),
-    InvalidUrl(url::ParseError),
+    ServerError(u16, Vec<u8>),
+    RequestError(hyper::Error),
+    JsonError(serde_json::Error),
 }
 pub struct AuthClient {
-    client: reqwest::Client,
-    provider: Url,
+    client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>,
+    authority: Authority,
 }
 
 impl AuthClient {
-    pub fn new<T: IntoUrl>(provider: T) -> Result<Self, AuthClientError> {
-        Ok(Self {
-            client: reqwest::Client::new(),
-            provider: provider.into_url()?,
-        })
+    pub fn new(authority: Authority) -> Self {
+        let https = hyper_rustls::HttpsConnector::new();
+        let client: client::Client<_, Body> = client::Client::builder().build(https);
+
+        Self { client, authority }
+    }
+
+    fn get_uri(&self, path: &'static str) -> Uri {
+        Uri::builder()
+            .scheme(http::uri::Scheme::HTTPS)
+            .authority(self.authority.clone())
+            .path_and_query(http::uri::PathAndQuery::from_static(path))
+            .build()
+            .expect("This URI should always be correct, so this will never panic")
+    }
+
+    pub async fn post<T>(
+        &self,
+        uri: Uri,
+        data: T,
+    ) -> std::result::Result<http::Response<Body>, AuthClientError>
+    where
+        T: serde::ser::Serialize,
+    {
+        let body = serde_json::to_vec(&data)?;
+
+        let mut request = Request::new(Body::from(body));
+        *request.method_mut() = hyper::Method::POST;
+        *request.uri_mut() = uri;
+        Ok(self.client.request(request).await?)
     }
 
     pub async fn register(
@@ -43,8 +70,8 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let ep = self.provider.join("register")?;
-        self.client.post(ep).json(&data).send().await?;
+        let uri = self.get_uri("/register");
+        self.post(uri, data).await?;
         Ok(())
     }
 
@@ -55,16 +82,16 @@ impl AuthClient {
         let data = UuidLookupPayload {
             username: username.as_ref().to_owned(),
         };
-        let ep = self.provider.join("username_to_uuid")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
+        let uri = self.get_uri("/username_to_uuid");
+        let resp = self.post(uri, data).await?;
 
         Ok(handle_response::<UuidLookupResponse>(resp).await?.uuid)
     }
 
     pub async fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
         let data = UsernameLookupPayload { uuid };
-        let ep = self.provider.join("uuid_to_username")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
+        let uri = self.get_uri("/uuid_to_username");
+        let resp = self.post(uri, data).await?;
 
         Ok(handle_response::<UsernameLookupResponse>(resp)
             .await?
@@ -80,18 +107,16 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-
-        let ep = self.provider.join("generate_token")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
+        let uri = self.get_uri("/generate_token");
+        let resp = self.post(uri, data).await?;
 
         Ok(handle_response::<SignInResponse>(resp).await?.token)
     }
 
     pub async fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
         let data = ValidityCheckPayload { token };
-
-        let ep = self.provider.join("verify")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
+        let uri = self.get_uri("/verify");
+        let resp = self.post(uri, data).await?;
 
         Ok(handle_response::<ValidityCheckResponse>(resp).await?.uuid)
     }
@@ -100,16 +125,20 @@ impl AuthClient {
 /// If response code isn't a success it will return an error with the response code and plain text body.
 ///
 /// Otherwise will deserialize the json based on given type (through turbofish notation)
-async fn handle_response<T>(resp: reqwest::Response) -> Result<T, AuthClientError>
+async fn handle_response<T>(resp: hyper::Response<Body>) -> Result<T, AuthClientError>
 where
     T: serde::Serialize + serde::de::DeserializeOwned,
 {
-    if resp.status().is_success() {
-        Ok(resp.json::<T>().await?)
+    let status = resp.status();
+    let body = resp.into_body();
+    let bytes = to_bytes(body).await?;
+
+    if status.is_success() {
+        Ok(serde_json::from_slice(&bytes)?)
     } else {
         Err(AuthClientError::ServerError(
-            resp.status().as_u16(),
-            resp.text().await?,
+            status.as_u16(),
+            bytes.to_vec(),
         ))
     }
 }
@@ -118,24 +147,22 @@ impl std::fmt::Display for AuthClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             AuthClientError::ServerError(code, text) => {
-                write!(f, "Auth Server returned {} with: {}", code, text)
+                write!(f, "Auth Server returned {} with: {:?}", code, text)
             }
             AuthClientError::RequestError(text) => write!(f, "Request failed with: {}", text),
-            AuthClientError::InvalidUrl(e) => {
-                write!(f, "Got invalid url to make auth requests to: {}", e)
-            }
+            AuthClientError::JsonError(text) => write!(f, "Failed to convert Json with: {}", text),
         }
     }
 }
 
-impl From<url::ParseError> for AuthClientError {
-    fn from(err: url::ParseError) -> Self {
-        AuthClientError::InvalidUrl(err)
+impl From<hyper::Error> for AuthClientError {
+    fn from(err: hyper::Error) -> Self {
+        AuthClientError::RequestError(err)
     }
 }
 
-impl From<reqwest::Error> for AuthClientError {
-    fn from(err: reqwest::Error) -> Self {
-        AuthClientError::RequestError(err)
+impl From<serde_json::Error> for AuthClientError {
+    fn from(err: serde_json::Error) -> Self {
+        AuthClientError::JsonError(err)
     }
 }

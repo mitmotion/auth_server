@@ -5,6 +5,7 @@ authors = ["Songtronix <Songtronix@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+http = "0.2.1"
 clap = { version = "2.33.0", features = ["yaml"] }
 authc = { path = "../authc" }
 tokio = { version = "0.2.22", features = ["macros"] }
