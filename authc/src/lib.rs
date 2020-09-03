@@ -4,6 +4,7 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
+use reqwest::{IntoUrl, Url};
 pub use uuid::Uuid;
 
 fn net_prehash(password: &str) -> String {
@@ -17,24 +18,23 @@ fn net_prehash(password: &str) -> String {
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
     ServerError(u16, String),
-    RequestError(String),
-    JsonError(serde_json::Error),
+    RequestError(reqwest::Error),
+    InvalidUrl(url::ParseError),
 }
-
 pub struct AuthClient {
-    _agent: ureq::Agent,
-    provider: String,
+    client: reqwest::Client,
+    provider: Url,
 }
 
 impl AuthClient {
-    pub fn new<T: ToString>(provider: T) -> Self {
-        Self {
-            _agent: ureq::agent(),
-            provider: provider.to_string(),
-        }
+    pub fn new<T: IntoUrl>(provider: T) -> Result<Self, AuthClientError> {
+        Ok(Self {
+            client: reqwest::Client::new(),
+            provider: provider.into_url()?,
+        })
     }
 
-    pub fn register(
+    pub async fn register(
         &self,
         username: impl AsRef<str>,
         password: impl AsRef<str>,
@@ -43,36 +43,35 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let ep = format!("{}/register", self.provider);
-        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
-        check_response(resp)?;
+        let ep = self.provider.join("register")?;
+        self.client.post(ep).json(&data).send().await?;
         Ok(())
     }
 
-    pub fn username_to_uuid(&self, username: impl AsRef<str>) -> Result<Uuid, AuthClientError> {
+    pub async fn username_to_uuid(
+        &self,
+        username: impl AsRef<str>,
+    ) -> Result<Uuid, AuthClientError> {
         let data = UuidLookupPayload {
             username: username.as_ref().to_owned(),
         };
-        let ep = format!("{}/username_to_uuid", self.provider);
-        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
+        let ep = self.provider.join("username_to_uuid")?;
+        let resp = self.client.post(ep).json(&data).send().await?;
 
-        let resp = check_response(resp)?;
-        let body = resp.into_string()?;
-        let data: UuidLookupResponse = serde_json::from_str(body.as_str())?;
-        Ok(data.uuid)
+        Ok(handle_response::<UuidLookupResponse>(resp).await?.uuid)
     }
 
-    pub fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
+    pub async fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
         let data = UsernameLookupPayload { uuid };
-        let ep = format!("{}/uuid_to_username", self.provider);
-        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
-        let resp = check_response(resp)?;
-        let body = resp.into_string()?;
-        let data: UsernameLookupResponse = serde_json::from_str(body.as_str())?;
-        Ok(data.username)
+        let ep = self.provider.join("uuid_to_username")?;
+        let resp = self.client.post(ep).json(&data).send().await?;
+
+        Ok(handle_response::<UsernameLookupResponse>(resp)
+            .await?
+            .username)
     }
 
-    pub fn sign_in(
+    pub async fn sign_in(
         &self,
         username: impl AsRef<str>,
         password: impl AsRef<str>,
@@ -81,38 +80,37 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let ep = format!("{}/generate_token", self.provider);
-        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
-        let resp = check_response(resp)?;
-        let body = resp.into_string()?;
-        let data: SignInResponse = serde_json::from_str(body.as_str())?;
-        Ok(data.token)
+
+        let ep = self.provider.join("generate_token")?;
+        let resp = self.client.post(ep).json(&data).send().await?;
+
+        Ok(handle_response::<SignInResponse>(resp).await?.token)
     }
 
-    pub fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
+    pub async fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
         let data = ValidityCheckPayload { token };
-        let ep = format!("{}/verify", self.provider);
-        let resp = ureq::post(&ep).send_string(serde_json::to_string(&data)?.as_str());
-        let resp = check_response(resp)?;
-        let body = resp.into_string()?;
-        let data: ValidityCheckResponse = serde_json::from_str(body.as_str())?;
-        Ok(data.uuid)
+
+        let ep = self.provider.join("verify")?;
+        let resp = self.client.post(ep).json(&data).send().await?;
+
+        Ok(handle_response::<ValidityCheckResponse>(resp).await?.uuid)
     }
 }
 
-fn check_response(resp: ureq::Response) -> Result<ureq::Response, AuthClientError> {
-    match resp.synthetic_error() {
-        Some(e) => Err(AuthClientError::RequestError(e.body_text())),
-        None => {
-            if resp.ok() {
-                Ok(resp)
-            } else {
-                Err(AuthClientError::ServerError(
-                    resp.status(),
-                    resp.into_string().unwrap(),
-                ))
-            }
-        }
+/// If response code isn't a success it will return an error with the response code and plain text body.
+///
+/// Otherwise will deserialize the json based on given type (through turbofish notation)
+async fn handle_response<T>(resp: reqwest::Response) -> Result<T, AuthClientError>
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    if resp.status().is_success() {
+        Ok(resp.json::<T>().await?)
+    } else {
+        Err(AuthClientError::ServerError(
+            resp.status().as_u16(),
+            resp.text().await?,
+        ))
     }
 }
 
@@ -120,26 +118,24 @@ impl std::fmt::Display for AuthClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             AuthClientError::ServerError(code, text) => {
-                write!(f, "Server returned {} with text {}", code, text)
+                write!(f, "Auth Server returned {} with: {}", code, text)
             }
-            AuthClientError::RequestError(text) => {
-                write!(f, "Request failed, connection error with text {}", text)
-            }
-            AuthClientError::JsonError(err) => {
-                write!(f, "failed json serialisation/deserialisation {}", err)
+            AuthClientError::RequestError(text) => write!(f, "Request failed with: {}", text),
+            AuthClientError::InvalidUrl(e) => {
+                write!(f, "Got invalid url to make auth requests to: {}", e)
             }
         }
     }
 }
 
-impl From<serde_json::Error> for AuthClientError {
-    fn from(err: serde_json::Error) -> Self {
-        AuthClientError::JsonError(err)
+impl From<url::ParseError> for AuthClientError {
+    fn from(err: url::ParseError) -> Self {
+        AuthClientError::InvalidUrl(err)
     }
 }
 
-impl From<std::io::Error> for AuthClientError {
-    fn from(err: std::io::Error) -> Self {
-        AuthClientError::RequestError(format!("std::io::Error: {}", err))
+impl From<reqwest::Error> for AuthClientError {
+    fn from(err: reqwest::Error) -> Self {
+        AuthClientError::RequestError(err)
     }
 }
