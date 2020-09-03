@@ -1,7 +1,8 @@
 use authc::{AuthClient, AuthToken};
 use clap::{load_yaml, App};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let yml = load_yaml!("cli.yml");
     let app = App::from_yaml(yml);
     let matches = app.clone().get_matches();
@@ -12,7 +13,7 @@ fn main() {
             let password = get_arg(&args, "password", "Please specify the password.");
             let auth = set_auth_server(&args);
 
-            if let Err(e) = auth.register(&username, &password) {
+            if let Err(e) = auth.register(&username, &password).await {
                 exit_with(format!("Register failed with: {}", e));
             }
             println!("Successfully registered {}", username);
@@ -22,7 +23,7 @@ fn main() {
             let password = get_arg(&args, "password", "Please specify the password.");
             let auth = set_auth_server(&args);
 
-            match auth.sign_in(&username, &password) {
+            match auth.sign_in(&username, &password).await {
                 Ok(token) => {
                     println!("Auth Token: {}", token.serialize());
                 }
@@ -33,7 +34,7 @@ fn main() {
             let username = get_arg(&args, "username", "Please specify the username.");
             let auth = set_auth_server(&args);
 
-            match auth.username_to_uuid(&username) {
+            match auth.username_to_uuid(&username).await {
                 Ok(id) => {
                     println!("UUID of {}: {}", username, id);
                 }
@@ -48,7 +49,7 @@ fn main() {
                 };
             let auth = set_auth_server(&args);
 
-            match auth.validate(token) {
+            match auth.validate(token).await {
                 Ok(id) => {
                     println!("Successfully identified login token for user {}", id);
                 }
@@ -63,8 +64,8 @@ fn main() {
 
 fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
     match args.value_of("auth") {
-        Some(server) => AuthClient::new(server),
-        _ => AuthClient::new("https://auth.veloren.net"),
+        Some(server) => AuthClient::new(server).expect("Invalid auth server url!"),
+        _ => AuthClient::new("https://auth.veloren.net").unwrap(), // Always valid url
     }
 }
 
