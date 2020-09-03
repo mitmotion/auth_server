@@ -36,6 +36,10 @@ impl AuthClient {
         Self { client, authority }
     }
 
+    pub fn with_client(authority: Authority, client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>) -> Self {
+        Self { client, authority }
+    }
+
     fn get_uri(&self, path: &'static str) -> Uri {
         Uri::builder()
             .scheme(http::uri::Scheme::HTTPS)
