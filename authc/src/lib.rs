@@ -25,7 +25,12 @@ pub enum AuthClientError {
 }
 pub struct AuthClient {
     client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>,
-    authority: Authority,
+    //precached Parts
+    register_uri: Uri,
+    username_to_uuid_uri: Uri,
+    uuid_to_username_uri: Uri,
+    generate_token_uri: Uri,
+    verify_uri: Uri,
 }
 
 impl AuthClient {
@@ -33,17 +38,33 @@ impl AuthClient {
         let https = hyper_rustls::HttpsConnector::new();
         let client: client::Client<_, Body> = client::Client::builder().build(https);
 
-        Self { client, authority }
+        Self::with_client(authority, client)
     }
 
-    pub fn with_client(authority: Authority, client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>) -> Self {
-        Self { client, authority }
+    pub fn with_client(
+        authority: Authority,
+        client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>,
+    ) -> Self {
+        let register_uri = Self::get_uri(&authority, "/register");
+        let username_to_uuid_uri = Self::get_uri(&authority, "/username_to_uuid");
+        let uuid_to_username_uri = Self::get_uri(&authority, "/uuid_to_username");
+        let generate_token_uri = Self::get_uri(&authority, "/generate_token");
+        let verify_uri = Self::get_uri(&authority, "/verify");
+
+        Self {
+            client,
+            register_uri,
+            username_to_uuid_uri,
+            uuid_to_username_uri,
+            generate_token_uri,
+            verify_uri,
+        }
     }
 
-    fn get_uri(&self, path: &'static str) -> Uri {
+    fn get_uri(authority: &Authority, path: &'static str) -> Uri {
         Uri::builder()
             .scheme(http::uri::Scheme::HTTPS)
-            .authority(self.authority.clone())
+            .authority(authority.clone())
             .path_and_query(http::uri::PathAndQuery::from_static(path))
             .build()
             .expect("This URI should always be correct, so this will never panic")
@@ -51,7 +72,7 @@ impl AuthClient {
 
     pub async fn post<T>(
         &self,
-        uri: Uri,
+        uri: &Uri,
         data: T,
     ) -> std::result::Result<http::Response<Body>, AuthClientError>
     where
@@ -61,7 +82,7 @@ impl AuthClient {
 
         let mut request = Request::new(Body::from(body));
         *request.method_mut() = hyper::Method::POST;
-        *request.uri_mut() = uri;
+        *request.uri_mut() = uri.clone();
         Ok(self.client.request(request).await?)
     }
 
@@ -74,8 +95,7 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let uri = self.get_uri("/register");
-        self.post(uri, data).await?;
+        self.post(&self.register_uri, data).await?;
         Ok(())
     }
 
@@ -86,16 +106,14 @@ impl AuthClient {
         let data = UuidLookupPayload {
             username: username.as_ref().to_owned(),
         };
-        let uri = self.get_uri("/username_to_uuid");
-        let resp = self.post(uri, data).await?;
+        let resp = self.post(&self.username_to_uuid_uri, data).await?;
 
         Ok(handle_response::<UuidLookupResponse>(resp).await?.uuid)
     }
 
     pub async fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
         let data = UsernameLookupPayload { uuid };
-        let uri = self.get_uri("/uuid_to_username");
-        let resp = self.post(uri, data).await?;
+        let resp = self.post(&self.uuid_to_username_uri, data).await?;
 
         Ok(handle_response::<UsernameLookupResponse>(resp)
             .await?
@@ -111,16 +129,14 @@ impl AuthClient {
             username: username.as_ref().to_owned(),
             password: net_prehash(password.as_ref()),
         };
-        let uri = self.get_uri("/generate_token");
-        let resp = self.post(uri, data).await?;
+        let resp = self.post(&self.generate_token_uri, data).await?;
 
         Ok(handle_response::<SignInResponse>(resp).await?.token)
     }
 
     pub async fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
         let data = ValidityCheckPayload { token };
-        let uri = self.get_uri("/verify");
-        let resp = self.post(uri, data).await?;
+        let resp = self.post(&self.verify_uri, data).await?;
 
         Ok(handle_response::<ValidityCheckResponse>(resp).await?.uuid)
     }
