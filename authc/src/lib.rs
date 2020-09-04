@@ -4,6 +4,7 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
+use core::marker::PhantomData;
 use reqwest::{IntoUrl, Url};
 pub use uuid::Uuid;
 
@@ -19,19 +20,113 @@ pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
     ServerError(u16, String),
     RequestError(reqwest::Error),
-    InvalidUrl(url::ParseError),
+    InvalidUrl(Option<url::ParseError>),
+    ParseError(serde_json::Error),
 }
 pub struct AuthClient {
     client: reqwest::Client,
     provider: Url,
 }
 
-impl AuthClient {
-    pub fn new<T: IntoUrl>(provider: T) -> Result<Self, AuthClientError> {
+pub struct AuthRequest<Response> {
+    request: reqwest::Request,
+    response: PhantomData<Response>,
+}
+
+impl<Response> Clone for AuthRequest<Response> {
+    fn clone(&self) -> Self {
+        Self {
+            request: self
+                .request
+                .try_clone()
+                // The only place a body can be set on an AuthRequest request is within this
+                // module, and we never clone afterwards here.
+                .expect("Request does not have a body, so the clone must succeed."),
+            response: PhantomData,
+        }
+    }
+}
+
+impl<Response> AuthRequest<Response> {
+    /// Invariant: endpoint should be a valid URI path.
+    fn new(client: &AuthClient, endpoint: &'static str) -> Result<Self, AuthClientError> {
         Ok(Self {
-            client: reqwest::Client::new(),
+            request: client.client
+                .post(client.provider.join(endpoint)?)
+                .header(reqwest::header::CONTENT_TYPE, reqwest::header::HeaderValue::from_static("application/json"))
+                .build()
+                // In this module, we only pass in valid endpoints, so this must succeed.
+                .expect("All the endpoints in this module are valid, and the headers are always the same."),
+            response: PhantomData,
+        })
+    }
+
+    /// Execute the current `AuthRequest`.
+    pub async fn execute(
+        mut self,
+        payload: reqwest::Body,
+        client: &AuthClient,
+    ) -> Result<Response, AuthClientError>
+    where
+        Response: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        *self.request.body_mut() = Some(payload);
+        Ok(handle_response::<Response>(client.client.execute(self.request).await?).await?)
+    }
+}
+
+//// Default client settings are designed to be as low-latency as reasonably possible while
+/// still being completely predictable for short message sizes.  This is beacause the
+/// validate endpoint creates server-side state for unauthenticated clients, so we want it
+/// to be resolved as quickly as possible.
+///
+/// For pool values, timeouts, sockets, etc., values are set deliberately low to avoid
+/// consuming extra resources except when requested to do so.  If the client has
+/// high-performance needs they should set these using `with_client`.
+pub fn default_client_config() -> reqwest::ClientBuilder {
+    reqwest::ClientBuilder::new()
+        // NOTE: The default proxy is System and we want to keep it, and similarly the default
+        // is no timeout or connect_timeout, but we can't explicitly specify these.
+        // .proxy(Proxy::System)
+        // .timeout(None)
+        // .connect_timeout(None)
+        .redirect(reqwest::redirect::Policy::none())
+        .referer(false)
+        .pool_idle_timeout(None)
+        .pool_max_idle_per_host(1)
+        .tcp_nodelay_(true)
+        .local_address(None)
+}
+
+impl AuthClient {
+    pub fn with_client<T: IntoUrl>(
+        provider: T,
+        client: reqwest::ClientBuilder,
+    ) -> Result<Self, AuthClientError> {
+        Ok(Self {
+            client: client
+                // Unsupported options.
+                .no_gzip()
+                .no_brotli()
+                // To avoid leaking sensitive information.
+                .connection_verbose(false)
+                // NOTE: Ideally we could set identity here to match the provider.
+                // .identity(???)
+                // NOTE: Not possible iwth rust-tls.
+                // .danger_accept_invalid_hostnames(false)
+                // No insecure TLS ooptions
+                .danger_accept_invalid_certs(false)
+                // No C TLS.
+                .use_rustls_tls()
+                // No C DNS calls or blocking spawn
+                .trust_dns(true)
+                .build()?,
             provider: provider.into_url()?,
         })
+    }
+
+    pub fn new<T: IntoUrl>(provider: T) -> Result<Self, AuthClientError> {
+        Self::with_client(provider, default_client_config())
     }
 
     pub async fn register(
@@ -39,36 +134,46 @@ impl AuthClient {
         username: impl AsRef<str>,
         password: impl AsRef<str>,
     ) -> Result<(), AuthClientError> {
-        let data = RegisterPayload {
-            username: username.as_ref().to_owned(),
-            password: net_prehash(password.as_ref()),
-        };
-        let ep = self.provider.join("register")?;
-        self.client.post(ep).json(&data).send().await?;
-        Ok(())
+        Ok(AuthRequest::<()>::new(self, "register")?
+            .execute(
+                serde_json::to_vec(&RegisterPayload {
+                    username: username.as_ref().to_owned(),
+                    password: net_prehash(password.as_ref()),
+                })?
+                .into(),
+                self,
+            )
+            .await?)
     }
 
     pub async fn username_to_uuid(
         &self,
         username: impl AsRef<str>,
     ) -> Result<Uuid, AuthClientError> {
-        let data = UuidLookupPayload {
-            username: username.as_ref().to_owned(),
-        };
-        let ep = self.provider.join("username_to_uuid")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
-
-        Ok(handle_response::<UuidLookupResponse>(resp).await?.uuid)
+        Ok(
+            AuthRequest::<UuidLookupResponse>::new(self, "username_to_uuid")?
+                .execute(
+                    serde_json::to_vec(&UuidLookupPayload {
+                        username: username.as_ref().to_owned(),
+                    })?
+                    .into(),
+                    self,
+                )
+                .await?
+                .uuid,
+        )
     }
 
     pub async fn uuid_to_username(&self, uuid: Uuid) -> Result<String, AuthClientError> {
-        let data = UsernameLookupPayload { uuid };
-        let ep = self.provider.join("uuid_to_username")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
-
-        Ok(handle_response::<UsernameLookupResponse>(resp)
-            .await?
-            .username)
+        Ok(
+            AuthRequest::<UsernameLookupResponse>::new(self, "uuid_to_username")?
+                .execute(
+                    serde_json::to_vec(&UsernameLookupPayload { uuid })?.into(),
+                    self,
+                )
+                .await?
+                .username,
+        )
     }
 
     pub async fn sign_in(
@@ -76,24 +181,35 @@ impl AuthClient {
         username: impl AsRef<str>,
         password: impl AsRef<str>,
     ) -> Result<AuthToken, AuthClientError> {
-        let data = SignInPayload {
-            username: username.as_ref().to_owned(),
-            password: net_prehash(password.as_ref()),
-        };
+        Ok(AuthRequest::<SignInResponse>::new(self, "generate_token")?
+            .execute(
+                serde_json::to_vec(&SignInPayload {
+                    username: username.as_ref().to_owned(),
+                    password: net_prehash(password.as_ref()),
+                })?
+                .into(),
+                self,
+            )
+            .await?
+            .token)
+    }
 
-        let ep = self.provider.join("generate_token")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
-
-        Ok(handle_response::<SignInResponse>(resp).await?.token)
+    /// Get a cached client for subsequent validation.
+    pub fn validation_request(
+        &self,
+    ) -> Result<AuthRequest<ValidityCheckResponse>, AuthClientError> {
+        AuthRequest::new(self, "verify")
     }
 
     pub async fn validate(&self, token: AuthToken) -> Result<Uuid, AuthClientError> {
-        let data = ValidityCheckPayload { token };
-
-        let ep = self.provider.join("verify")?;
-        let resp = self.client.post(ep).json(&data).send().await?;
-
-        Ok(handle_response::<ValidityCheckResponse>(resp).await?.uuid)
+        Ok(self
+            .validation_request()?
+            .execute(
+                serde_json::to_vec(&ValidityCheckPayload { token })?.into(),
+                self,
+            )
+            .await?
+            .uuid)
     }
 }
 
@@ -122,20 +238,27 @@ impl std::fmt::Display for AuthClientError {
             }
             AuthClientError::RequestError(text) => write!(f, "Request failed with: {}", text),
             AuthClientError::InvalidUrl(e) => {
-                write!(f, "Got invalid url to make auth requests to: {}", e)
+                write!(f, "Got invalid url to make auth requests to: {:?}", e)
             }
+            AuthClientError::ParseError(err) => write!(f, "Request failed with: {}", err),
         }
     }
 }
 
 impl From<url::ParseError> for AuthClientError {
     fn from(err: url::ParseError) -> Self {
-        AuthClientError::InvalidUrl(err)
+        AuthClientError::InvalidUrl(Some(err))
     }
 }
 
 impl From<reqwest::Error> for AuthClientError {
     fn from(err: reqwest::Error) -> Self {
         AuthClientError::RequestError(err)
+    }
+}
+
+impl From<serde_json::Error> for AuthClientError {
+    fn from(err: serde_json::Error) -> Self {
+        AuthClientError::ParseError(err)
     }
 }

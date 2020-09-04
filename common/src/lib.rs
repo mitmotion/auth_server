@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct AuthToken {
     pub unique: u64,
 }
@@ -36,24 +36,24 @@ impl AuthToken {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct RegisterPayload {
     pub username: String,
     pub password: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SignInPayload {
     pub username: String,
     pub password: String,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct SignInResponse {
     pub token: AuthToken,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ValidityCheckPayload {
     pub token: AuthToken,
 }

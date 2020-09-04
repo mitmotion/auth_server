@@ -6,8 +6,8 @@ use rusqlite::{params, Connection, Error as DbError, NO_PARAMS};
 use serde_json::Error as JsonError;
 use std::error::Error;
 use std::fmt;
-use uuid::Uuid;
 use std::{env, path::PathBuf};
+use uuid::Uuid;
 
 lazy_static! {
     static ref TOKENS: TimedCache = TimedCache::new();
@@ -18,9 +18,8 @@ fn apply_db_dir_override(db_dir: &str) -> String {
         let path = PathBuf::from(val);
         if path.exists() || path.parent().map(|x| x.exists()).unwrap_or(false) {
             // Only allow paths with valid unicode characters
-            match path.to_str() {
-                Some(path) => return path.to_owned(),
-                None => {},
+            if let Some(path) = path.to_str() {
+                return path.to_owned();
             }
         }
         log::warn!("AUTH_DB_DIR is an invalid path.");
@@ -47,6 +46,7 @@ pub enum AuthError {
     UserDoesNotExist,
     InvalidLogin,
     InvalidToken,
+    InvalidUrl,
     Db(DbError),
     Hash(HashError),
     Json(JsonError),
@@ -65,6 +65,7 @@ impl AuthError {
             Self::Hash(_) => 500,
             Self::Json(_) => 400,
             Self::InvalidRequest(_) => 400,
+            Self::InvalidUrl => 400,
             Self::RateLimit => 429,
         }
     }
@@ -82,6 +83,7 @@ impl fmt::Display for AuthError {
                     "The username + password combination was incorrect or the user does not exist."
                         .into(),
                 Self::InvalidToken => "The given token is invalid.".into(),
+                Self::InvalidUrl => "The given URI is invalid".into(),
                 Self::Db(err) => format!("Database error: {}", err),
                 Self::Hash(err) => format!("Error securely storing password: {}", err),
                 Self::Json(err) => format!("Error decoding JSON: {}", err),
@@ -202,7 +204,7 @@ pub fn generate_token(username_unfiltered: &str, password: &str) -> Result<AuthT
 pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
     let mut uuid = None;
     TOKENS.run(&token, |entry| {
-        uuid = entry.map(|e| e.data.clone());
+        uuid = entry.map(|e| e.data);
         false
     });
     uuid.ok_or(AuthError::InvalidToken)

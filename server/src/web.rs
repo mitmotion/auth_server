@@ -44,8 +44,8 @@ fn ratelimit(
 
 fn remote(req: &Request) -> IpAddr {
     req.header("X-Real-IP")
-        .map(|ip| ip.parse().unwrap_or(req.remote_addr().ip()))
-        .unwrap_or(req.remote_addr().ip())
+        .map(|ip| ip.parse().unwrap_or_else(|_| req.remote_addr().ip()))
+        .unwrap_or_else(|| req.remote_addr().ip())
 }
 
 fn ping(req: &Request) -> Response {
@@ -53,7 +53,7 @@ fn ping(req: &Request) -> Response {
 }
 
 fn username_to_uuid(req: &Request) -> Result<Response, AuthError> {
-    let body = req.data().unwrap();
+    let body = req.data().expect("Body taken only once.");
     let payload: UuidLookupPayload = serde_json::from_reader(body)?;
     let uuid = auth::username_to_uuid(&payload.username)?;
     let response = UuidLookupResponse { uuid };
@@ -61,7 +61,7 @@ fn username_to_uuid(req: &Request) -> Result<Response, AuthError> {
 }
 
 fn uuid_to_username(req: &Request) -> Result<Response, AuthError> {
-    let body = req.data().unwrap();
+    let body = req.data().expect("Body taken only once.");
     let payload: UsernameLookupPayload = serde_json::from_reader(body)?;
     let username = auth::uuid_to_username(&payload.uuid)?;
     let response = UsernameLookupResponse { username };
@@ -69,15 +69,15 @@ fn uuid_to_username(req: &Request) -> Result<Response, AuthError> {
 }
 
 fn register(req: &Request) -> Result<Response, AuthError> {
-    let body = req.data().unwrap();
+    let body = req.data().expect("Body taken only once.");
     let payload: RegisterPayload = serde_json::from_reader(body)?;
     verify_username(&payload.username)?;
     auth::register(&payload.username, &payload.password)?;
-    Ok(Response::text("Ok"))
+    Ok(Response::json(&()))
 }
 
 fn generate_token(req: &Request) -> Result<Response, AuthError> {
-    let body = req.data().unwrap();
+    let body = req.data().expect("Body taken only once.");
     let payload: SignInPayload = serde_json::from_reader(body)?;
     verify_username(&payload.username)?;
     let token = auth::generate_token(&payload.username, &payload.password)?;
@@ -86,7 +86,7 @@ fn generate_token(req: &Request) -> Result<Response, AuthError> {
 }
 
 fn verify(req: &Request) -> Result<Response, AuthError> {
-    let body = req.data().unwrap();
+    let body = req.data().expect("Body taken only once.");
     let payload: ValidityCheckPayload = serde_json::from_reader(body)?;
     let uuid = auth::verify(payload.token)?;
     let response = ValidityCheckResponse { uuid };
@@ -100,11 +100,14 @@ pub fn start() {
     start_server(addr, move |request| {
         debug!("[{}] -> {}", remote(request), request.url());
 
-        let path = request.raw_url().split('?').next().unwrap();
+        let path = request.raw_url().split('?').next();
 
         let response = match (request.method(), path) {
-            ("GET", "/ping") => ping(request),
-            ("POST", path) => {
+            (_, None) => {
+                Response::text("InvalidUrl").with_status_code(AuthError::InvalidUrl.status_code())
+            }
+            ("GET", Some("/ping")) => ping(request),
+            ("POST", Some(path)) => {
                 let result = match path {
                     "/username_to_uuid" => username_to_uuid(request),
                     "/uuid_to_username" => uuid_to_username(request),
