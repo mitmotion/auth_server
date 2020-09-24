@@ -14,8 +14,6 @@ docker:
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
-  dependencies:
-    - build
   before_script:
     - ls "$CI_PROJECT_DIR/"
   script:

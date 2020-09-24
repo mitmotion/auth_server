@@ -1,5 +1,4 @@
 stages:
-  - build
   - publish
 
 variables:
@@ -40,5 +39,4 @@ workflow:
     - if: $CI_COMMIT_BRANCH
 
 include:
-  - local: .gitlab/CI/build.gitlab-ci.yml
   - local: .gitlab/CI/publish.gitlab-ci.yml
