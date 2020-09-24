@@ -1,0 +1,22 @@
+.release:
+  stage: build
+  tags:
+    - veloren-docker
+  rules:
+    - when: always
+
+build:
+  extends: .release
+  variables:
+    GIT_DEPTH: 9999999999999
+  script:
+    - echo "nightly-2020-08-15" > rust-toolchain
+    - cargo build --release
+    - cp -r target/release/auth-server $CI_PROJECT_DIR
+    - cp -r target/release/authc-cli $CI_PROJECT_DIR
+  artifacts:
+    paths:
+      - auth-server
+      - authc-cli
+      - LICENSE
+    expire_in: 1 week
