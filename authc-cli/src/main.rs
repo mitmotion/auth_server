@@ -1,8 +1,7 @@
 use authc::{AuthClient, AuthToken};
 use clap::{load_yaml, App};
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let yml = load_yaml!("cli.yml");
     let app = App::from_yaml(yml);
     let matches = app.clone().get_matches();
@@ -13,7 +12,7 @@ async fn main() {
             let password = get_arg(&args, "password", "Please specify the password.");
             let auth = set_auth_server(&args);
 
-            if let Err(e) = auth.register(&username, &password).await {
+            if let Err(e) = auth.register(&username, &password) {
                 exit_with(format!("Register failed with: {}", e));
             }
             println!("Successfully registered {}", username);
@@ -23,7 +22,7 @@ async fn main() {
             let password = get_arg(&args, "password", "Please specify the password.");
             let auth = set_auth_server(&args);
 
-            match auth.sign_in(&username, &password).await {
+            match auth.sign_in(&username, &password) {
                 Ok(token) => {
                     println!("Auth Token: {}", token.serialize());
                 }
@@ -34,7 +33,7 @@ async fn main() {
             let username = get_arg(&args, "username", "Please specify the username.");
             let auth = set_auth_server(&args);
 
-            match auth.username_to_uuid(&username).await {
+            match auth.username_to_uuid(&username) {
                 Ok(id) => {
                     println!("UUID of {}: {}", username, id);
                 }
@@ -49,7 +48,7 @@ async fn main() {
                 };
             let auth = set_auth_server(&args);
 
-            match auth.validate(token).await {
+            match auth.validate(token) {
                 Ok(id) => {
                     println!("Successfully identified login token for user {}", id);
                 }
