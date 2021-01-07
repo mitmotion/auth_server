@@ -21,12 +21,12 @@ and the authentication flow for game clients connecting to a game server.
 
 ```
 {
-    iss: string,
-    iat: i32,
-    nbf: i32,
-    exp: i32,
-    sub: string,
-    usr: string
+  iss: string,
+  iat: i32,
+  nbf: i32,
+  exp: i32,
+  sub: string,
+  usr: string
 }
 ```
 
