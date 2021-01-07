@@ -42,7 +42,7 @@ The authentication server exposes an API over HTTPS.
 ### issue_jwt
 
 - Type: POST
-- Route: ```/issue_jwt```
+- Route: ```/api/v1/issue_jwt```
 - Payload:
   ```
   {
