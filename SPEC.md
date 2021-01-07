@@ -47,10 +47,10 @@ No issuance payload.
 
 The authentication server exposes an API over HTTPS.
 
-### issue_jwt
+### v1 issue_jwt
 
 - Type: POST
-- Route: ```/api/v1/issue_jwt```
+- Route: `/api/v1/issue_jwt`
 - Payload:
   ```
   {
@@ -71,3 +71,27 @@ The JWT issued will have an expiration of 5 minutes from issuance
 and a not before claim set to 5 seconds prior to the time of issuance to account for clock skew.
 
 The payload is optional and depends on the JWT type being issued.
+
+### v1 username_to_uuid
+
+- Type: GET
+- Route: `/api/v1/username_to_uuid`
+- Parameters: `username`
+- Response:
+  ```
+  {
+    uuid: string
+  }
+  ```
+
+### v1 uuid_to_username
+
+- Type: GET
+- Route: `/api/v1/uuid_to_username`
+- Parameters: `uuid`
+- Response:
+  ```
+  {
+    username: string
+  }
+  ```
