@@ -22,7 +22,7 @@ Argon2 is used for password hashing.
 
 ## JWT Types
 
-### Standard Claims
+### Reserved Claims
 
 - `iss`: issuer
 - `iat`: timestamp of issuance
