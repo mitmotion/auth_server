@@ -6,6 +6,14 @@ and the authentication flow for game clients connecting to a game server.
 ## Terminology
 
 - JWT: JSON Web Token as specified in IETF RFC 7519.
+- Client: The Veloren client and the agent the player interacts with.
+- Game server: A service running the Veloren multiplayer server software.
+- Authentication server: A trusted central service that stores account information.
+
+## Algorithms
+
+AES256-GCM is used for symmetric encryption and
+Ed25519 is used for asymmetric encryption.
 
 ## JWT Types
 
@@ -17,7 +25,7 @@ and the authentication flow for game clients connecting to a game server.
 - `exp`: expiry timestamp
 - `sub`: subject
 
-### 1: Client <-> Gameserver authentication
+### 1: Client <-> Game server authentication
 
 ```
 {
