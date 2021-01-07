@@ -58,9 +58,9 @@ The authentication server exposes an API over HTTPS.
 - Route: `/api/v1/get_public_keychain`
 - Response:
   ```
-    {
-      jwk: JWK[]
-    }
+  {
+    jwk: JWK[]
+  }
   ```
 
 Fetch the current JWKS of the authenticaton server.
