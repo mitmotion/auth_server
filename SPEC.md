@@ -10,6 +10,7 @@ and the authentication flow for game clients connecting to a game server.
 - Game server: A service running the Veloren multiplayer server software.
 - Authentication server: A trusted central service that stores account information.
 - Passkey: A base64 encoded password hash.
+- Id: A version 4 UUID.
 
 ## Algorithms
 
@@ -40,12 +41,12 @@ Argon2 is used for password hashing.
 }
 ```
 
-`sub` here is the UUID of the account that is logging in.
+`sub` here is the id of the account that is logging in.
 `usr` is the username of the account logging in.
 
 No issuance payload.
 
-## Server API
+## Authentication Server API
 
 The authentication server exposes an API over HTTPS.
 
@@ -74,23 +75,42 @@ and a not before claim set to 5 seconds prior to the time of issuance to account
 
 The payload is optional and depends on the JWT type being issued.
 
-### v1 username_to_uuid
+### v1 sign_up
+
+- Type: POST
+- Route: `/api/v1/sign_up`
+- Payload:
+  ```
+  {
+    username: string,
+    passkey: string,
+    email: string
+  }
+  ```
+- Response:
+  ```
+  {
+    id: string
+  }
+  ```
+
+### v1 username_to_id
 
 - Type: GET
-- Route: `/api/v1/username_to_uuid`
+- Route: `/api/v1/username_to_id`
 - Parameters: `username`
 - Response:
   ```
   {
-    uuid: string
+    id: string
   }
   ```
 
-### v1 uuid_to_username
+### v1 id_to_username
 
 - Type: GET
-- Route: `/api/v1/uuid_to_username`
-- Parameters: `uuid`
+- Route: `/api/v1/id_to_username`
+- Parameters: `id`
 - Response:
   ```
   {
