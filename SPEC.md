@@ -76,7 +76,6 @@ with only one of them being valid for signing at any point in time and the other
 Each keyset must have an ID that can be used to identify it in the keyring.
 This ID should take the form of a 32 bit signed integer and the value is the amount of seconds
 passed since the Unix epoch at the time of keyset creation.
-
 This allows the gameserver to look at the IDs in the keyring to figure out
 when it's local copy of the keyring must be refreshed.
 
