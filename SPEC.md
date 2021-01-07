@@ -9,11 +9,13 @@ and the authentication flow for game clients connecting to a game server.
 - Client: The Veloren client and the agent the player interacts with.
 - Game server: A service running the Veloren multiplayer server software.
 - Authentication server: A trusted central service that stores account information.
+- Passkey: A base64 encoded password hash.
 
 ## Algorithms
 
 AES256-GCM is used for symmetric encryption and
 Ed25519 is used for asymmetric encryption.
+Argon2 is used for password hashing.
 
 ## JWT Types
 
