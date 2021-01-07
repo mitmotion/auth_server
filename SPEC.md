@@ -41,7 +41,7 @@ The authentication server exposes an API over HTTPS.
 
 ### issue_jwt
 
-- Type: PUT
+- Type: POST
 - Route: ```/issue_jwt```
 - Payload:
   ```
