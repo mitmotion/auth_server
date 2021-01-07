@@ -6,6 +6,8 @@ and the authentication flow for game clients connecting to a game server.
 ## Terminology
 
 - JWT: JSON Web Token as specified in IETF RFC 7519.
+- JWK: JSON Web Key as specified in IETF RFC 7517.
+- JWKS: JSON Web Key Set as specified in IETF RFC 7517.
 - Client: The Veloren client and the agent the player interacts with.
 - Game server: A service running the Veloren multiplayer server software.
 - Authentication server: A trusted central service that stores account information.
@@ -50,6 +52,20 @@ No issuance payload.
 
 The authentication server exposes an API over HTTPS.
 
+### v1 get_public_keychain
+
+- Type: GET
+- Route: `/api/v1/get_public_keychain`
+- Response:
+  ```
+    {
+      jwk: JWK[]
+    }
+  ```
+
+Fetch the current JWKS of the authenticaton server.
+These keys need to be fetched in order to verify issued JWTs.
+
 ### v1 issue_jwt
 
 - Type: POST
@@ -66,12 +82,16 @@ The authentication server exposes an API over HTTPS.
 - Response:
   ```
   {
-    jwt: string
+    jwt: string,
+    kid: i32
   }
   ```
 
 The JWT issued will have an expiration of 5 minutes from issuance
 and a not before claim set to 5 seconds prior to the time of issuance to account for clock skew.
+
+The `kid` parameter exists to identify the key
+within a keychain for the purpose of key rollover.
 
 The payload is optional and depends on the JWT type being issued.
 
