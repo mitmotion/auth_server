@@ -43,20 +43,20 @@ The authentication server exposes an API over HTTPS.
 
 - Type: PUT
 - Route: ```/issue_jwt```
-- Payload:\
-  ```\
-  {\
-    jwt_type: i32,\
-    username: string,\
-    passkey: string,\
-    ?payload: any\
-  }\
+- Payload:
   ```
-- Response:\
-  ```\
-  {\
-    jwt: string\
-  }\
+  {
+    jwt_type: i32,
+    username: string,
+    passkey: string,
+    ?payload: any
+  }
+  ```
+- Response:
+  ```
+  {
+    jwt: string
+  }
   ```
 
 The JWT issued will have an expiration of 5 minutes from issuance
