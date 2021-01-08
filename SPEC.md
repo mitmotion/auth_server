@@ -19,6 +19,7 @@ and the authentication flow for game clients connecting to a game server.
 AES256-GCM is used for symmetric encryption and
 Ed25519 is used for asymmetric encryption.
 Argon2 is used for password hashing.
+ECDH with Curve25519 is used for key exchange.
 
 ## JWT Types
 
