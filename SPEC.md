@@ -13,6 +13,7 @@ and the authentication flow for game clients connecting to a game server.
 - Authentication server: A trusted central service that stores account information.
 - Passkey: A base64 encoded password hash.
 - ID: A version 4 UUID.
+- CSPRNG: cryptographically secure pseudorandom number generator.
 
 ## Algorithms
 
@@ -60,17 +61,19 @@ Payload:
 `gsp` is a JWT encoded game server public key.
 
 This JWT format is a bit special. The JWT is not signed but symmetrically
-encrypted using a shared secret generated with `Truncate(SHA3-256(ECDH(game_server_public, auth_server_private)))`.
+encrypted using a shared secret generated with `Truncate(HMAC-SHA3-256(ECDH(game_server_public, auth_server_private), salt))`.
 
 Extra:
 
 ```
 {
-  iv: string
+  iv: string,
+  salt: string
 }
 ```
 
-`iv` is the base64 encoded IV used for encrypting the JWT.
+`iv` is the base64 encoded AES128-GCM IV used for encrypting the JWT.
+`salt` is the base64 encoded 256 bit salt used for HMAC key derivation.
 
 ## Authentication Server API
 
@@ -211,11 +214,11 @@ of steps detailed below.
 2. The client fetches the game server JWKS and picks the newest public key.
 3. The client issues a JWT of type 1 using the the username, passkey and game server public key.
 4. The client sends the JWT to the game server bundled with the key id of the game server
-   public key, the id of the auth server public key and the randomly generated IV provided
+   public key, the id of the auth server public key and the randomly generated IV and salt provided
    by the auth server during JWT issuance.
 5. The game server fetches the JWKS from the authentication server and finds the public key used to
    encrypt the JWT. If the JWKS does not contain the correct key id. The JWT is too old and must be rejected.
-6. The game server performs `Truncate(SHA3-256(ECDH(auth_server_public, game_server_private)))` to find the
+6. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
    the shared secret used to encrypt the JWT.
 7. The game server decrypts the JWT using the shared secret.
    If decryption fails, abort with an invalid jwt error.
@@ -224,3 +227,9 @@ of steps detailed below.
    `nbf` there is significant clock skew on the game server or authentication server and
    and a fatal error issued.
    If the current timestamp is larger than `exp` the JWT has expired and an expired JWT error issued.
+9. The client generates an ephemeral keypair using a CSPRNG and sends the
+   public key to the game server.
+10. The game server generates a new AES128-GCM IV and a 256 bit salt, send the, it to the client and computes a second shared secret
+    using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
+11. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
+12. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
