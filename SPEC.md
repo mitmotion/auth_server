@@ -217,7 +217,7 @@ of steps detailed below.
    public key, the id of the auth server public key and the randomly generated IV and salt provided
    by the auth server during JWT issuance.
 5. The game server fetches the JWKS from the authentication server and finds the public key used to
-   encrypt the JWT. If the JWKS does not contain the correct key id. The JWT is too old and must be rejected.
+   encrypt the JWT. If the JWKS does not contain the correct key id, the JWT is too old and must be rejected.
 6. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
    the shared secret used to encrypt the JWT.
 7. The game server decrypts the JWT using the shared secret.
