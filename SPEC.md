@@ -48,7 +48,14 @@ Argon2 is used for password hashing.
 - `usr` is the username of the account logging in.
 - `spv` is a base64 encoded SHA3-256 fingerprint of the game server's public key.
 
-No issuance payload.
+Payload:
+```
+{
+  spv: string,
+}
+```
+
+`spv` is a base64 encoded SHA3-256 fingerprint of the game server's public key.
 
 ## Authentication Server API
 
