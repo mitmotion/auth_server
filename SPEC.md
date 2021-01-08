@@ -138,8 +138,7 @@ The payload is optional and depends on the JWT type being issued.
   {
     username: string,
     passkey: string,
-    email: string,
-    spv: string
+    email: string
   }
   ```
 - Response:
@@ -148,8 +147,6 @@ The payload is optional and depends on the JWT type being issued.
     id: string
   }
   ```
-
-`spv` is a base64 encoded SHA3-256 fingerprint of the game server's public key.
 
 #### v1 username_to_id
 
