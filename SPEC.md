@@ -49,6 +49,7 @@ Argon2 is used for password hashing.
 - `spv` is a base64 encoded SHA3-256 fingerprint of the game server's public key.
 
 Payload:
+
 ```
 {
   spv: string,
