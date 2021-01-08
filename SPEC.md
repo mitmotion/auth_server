@@ -210,29 +210,29 @@ Establishing a secure connection between client and the game server
 as well as authenticating the client to the game server is done using the series
 of steps detailed below.
 
-1. The client establishes an unsecured connection with the game server.
-2. The client fetches the game server JWKS and picks the newest public key.
-3. The client issues a JWT of type 1 using the the username, passkey and game server public key.
-4. The client sends the JWT to the game server bundled with the key id of the game server
+1. The client fetches the game server JWKS and picks the newest public key.
+2. The client issues a JWT of type 1 using the the username, passkey and game server public key.
+3. The client opens an unsecurede connection with the game server sends the
+   JWT to the game server bundled with the key id of the game server
    public key, the id of the auth server public key and the randomly generated IV and salt provided
    by the auth server during JWT issuance.
-5. The game server fetches the JWKS from the authentication server and finds the public key used to
+4. The game server fetches the JWKS from the authentication server and finds the public key used to
    encrypt the JWT. If the JWKS does not contain the correct key id, the JWT is too old and must be rejected.
-6. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
+5. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
    the shared secret used to encrypt the JWT.
-7. The game server decrypts the JWT using the shared secret.
+6. The game server decrypts the JWT using the shared secret.
    If decryption fails, abort with an invalid jwt error.
-8. The game server validates that the current timestamp is within the interval
+7. The game server validates that the current timestamp is within the interval
    specified by the `nbf` and `exp` claims of the JWT. If the current timestamp is smaller than
    `nbf` there is significant clock skew on the game server or authentication server and
    and a fatal error issued.
    If the current timestamp is larger than `exp` the JWT has expired and an expired JWT error issued.
-9. The client generates an ephemeral keypair using a CSPRNG and sends the
+8. The client generates an ephemeral keypair using a CSPRNG and sends the
    public key to the game server.
-10. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
+9. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
     the id of the game server keypair being used and computes a second shared secret
     using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
-11. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
+10. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
     If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
     If it still does not contain a matching key, reset both parties to step 10.
-12. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
+11. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
