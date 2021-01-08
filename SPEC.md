@@ -229,7 +229,7 @@ of steps detailed below.
    If the current timestamp is larger than `exp` the JWT has expired and an expired JWT error issued.
 9. The client generates an ephemeral keypair using a CSPRNG and sends the
    public key to the game server.
-10. The game server generates a new AES128-GCM IV and a 256 bit salt, send the, it to the client and computes a second shared secret
+10. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client and computes a second shared secret
     using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
 11. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
 12. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
