@@ -35,16 +35,18 @@ Argon2 is used for password hashing.
 ```
 {
   iss: string,
-  iat: i32,
-  nbf: i32,
-  exp: i32,
+  iat: integer,
+  nbf: integer,
+  exp: integer,
   sub: string,
-  usr: string
+  usr: string,
+  spv: string
 }
 ```
 
-`sub` here is the ID of the account that is logging in.
-`usr` is the username of the account logging in.
+- `sub` here is the ID of the account that is logging in.
+- `usr` is the username of the account logging in.
+- `spv` is a base64 encoded SHA3-256 fingerprint of the game server's public key.
 
 No issuance payload.
 
@@ -105,7 +107,7 @@ These keys need to be fetched in order to verify issued JWTs.
 - Payload:
   ```
   {
-    jwt_type: i32,
+    jwt_type: integer,
     username: string,
     passkey: string,
     ?payload: any
@@ -115,7 +117,7 @@ These keys need to be fetched in order to verify issued JWTs.
   ```
   {
     jwt: string,
-    kid: i32
+    kid: integer
   }
   ```
 
@@ -136,7 +138,8 @@ The payload is optional and depends on the JWT type being issued.
   {
     username: string,
     passkey: string,
-    email: string
+    email: string,
+    spv: string
   }
   ```
 - Response:
@@ -145,6 +148,8 @@ The payload is optional and depends on the JWT type being issued.
     id: string
   }
   ```
+
+`spv` is a base64 encoded SHA3-256 fingerprint of the game server's public key.
 
 #### v1 username_to_id
 
