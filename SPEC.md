@@ -222,17 +222,12 @@ of steps detailed below.
    the shared secret used to encrypt the JWT.
 6. The game server decrypts the JWT using the shared secret.
    If decryption fails, abort with an invalid jwt error.
-7. The game server validates that the current timestamp is within the interval
-   specified by the `nbf` and `exp` claims of the JWT. If the current timestamp is smaller than
-   `nbf` there is significant clock skew on the game server or authentication server and
-   and a fatal error issued.
-   If the current timestamp is larger than `exp` the JWT has expired and an expired JWT error issued.
-8. The client generates an ephemeral keypair using a CSPRNG and sends the
+7. The client generates an ephemeral keypair using a CSPRNG and sends the
    public key to the game server.
-9. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
+8. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
     the id of the game server keypair being used and computes a second shared secret
     using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
-10. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
+9. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
     If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
     If it still does not contain a matching key, reset both parties to step 10.
-11. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
+10. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
