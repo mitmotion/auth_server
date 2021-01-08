@@ -210,7 +210,7 @@ Establishing a secure connection between client and the game server
 as well as authenticating the client to the game server is done using the series
 of steps detailed below.
 
-1. The client established an unsecured connection with the game server.
+1. The client establishes an unsecured connection with the game server.
 2. The client fetches the game server JWKS and picks the newest public key.
 3. The client issues a JWT of type 1 using the the username, passkey and game server public key.
 4. The client sends the JWT to the game server bundled with the key id of the game server
