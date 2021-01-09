@@ -177,6 +177,23 @@ The payload is optional and depends on the JWT type being issued.
   }
   ```
 
+#### v1 change_passkey
+
+- Type: POST
+- Route: `/api/v1/change_passkey`
+- Payload:
+  ```
+  {
+    username: string,
+    current_passkey: string,
+    new_passkey: string
+  }
+  ```
+- Response:
+  ```
+  "Ok"
+  ```
+
 #### v1 username_to_id
 
 - Type: GET
