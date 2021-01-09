@@ -237,10 +237,15 @@ of steps detailed below.
    the shared secret used to encrypt the JWT.\
 7. The game server decrypts the JWT using the shared secret.
    If decryption fails, abort with an invalid JWT error.
-8. The game server generates a new AES128-GCM IV and sends it to the client coupled with
-    the id of the game server keypair being used and computes a second shared secret
-    using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
-9. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
-   If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
-   If it still does not contain a matching key, reset both parties to step 8.
-10. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
+8. Verify that the client packet is not being replayed by comparing the `sit` claim of the JWT
+   with the entry for the account in the UUID -> epoch table.
+   If the `sit` claim is smaller than the value in the table, then the packet is potentially being replayed
+   which means the authentication attempt must be aborted.
+9. The game server responds with the id of the game server keypair being used and computes a second shared secret
+   using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
+   Finally, add an entry to the UUID -> epoch table with the account ID as the key and have the epoch
+   be the current epoch of the game server keyring plus one.
+10. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
+    If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
+    If it still does not contain a matching key, reset both parties to step 8.
+11. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
