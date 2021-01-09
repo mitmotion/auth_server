@@ -43,7 +43,7 @@ ECDH with Curve25519 is used for key exchange.
   exp: integer,
   sub: string,
   usr: string,
-  cpk: string,
+  cpk: JWK,
   sit: integer
 }
 ```
@@ -57,8 +57,8 @@ Payload:
 
 ```
 {
-  cpk: string,
-  gpk: string,
+  cpk: JWK,
+  gpk: JWK,
   sit: integer,
   username: string,
   passkey: string
