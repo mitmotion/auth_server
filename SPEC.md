@@ -248,4 +248,4 @@ of steps detailed below.
 10. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
     If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
     If it still does not contain a matching key, reset both parties to step 8.
-11. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
+11. All future messages are now secured using AES128-GCM with the second shared secret as the key.
