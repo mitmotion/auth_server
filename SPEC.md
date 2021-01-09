@@ -17,7 +17,8 @@ and the authentication flow for game clients connecting to a game server.
 
 ## Algorithms
 
-AES128-GCM is used for symmetric encryption.
+AES128-GCM is used for symmetric encryption between the client and game server.
+AES-GCM-SIV is used for symmetric encryption of the login JWT.
 Ed25519 is used for asymmetric encryption.
 Argon2 is used for password hashing.
 ECDH with Curve25519 is used for key exchange.
@@ -41,24 +42,32 @@ ECDH with Curve25519 is used for key exchange.
   nbf: integer,
   exp: integer,
   sub: string,
-  usr: string
+  usr: string,
+  cpk: string,
+  sit: integer
 }
 ```
 
 - `sub` here is the ID of the account that is logging in.
 - `usr` is the username of the account logging in.
+- `cpk` is the JWK encoded client public key.
+- `sit` is the epoch number of the game server keyring.
 
 Payload:
 
 ```
 {
-  gsp: string,
+  cpk: string,
+  gpk: string,
+  sit: integer,
   username: string,
   passkey: string
 }
 ```
 
-`gsp` is a JWT encoded game server public key.
+`cpk` is a JWK encoded client public key.
+`gpk` is a JWK encoded game server public key.
+`sit` is the epoch number of the game server keyring.
 
 This JWT format is a bit special. The JWT is not signed but symmetrically
 encrypted using a shared secret generated with `Truncate(HMAC-SHA3-256(ECDH(game_server_public, auth_server_private), salt))`.
@@ -204,6 +213,12 @@ according to the earlier specification.
 
 The key IDs are 32 bit signed integers, start from 0 and incremented with every generated keypair.
 
+The keyring is associated with an epoch counter. For every sign in done, the epoch counter is incremented.
+When the keypairs in the keyring are rotated, the epoch counter is reset to 0.
+
+To provide replay protection, a table of UUIDs mapping to epoch counters is also needed.
+This table should be cleared when the epoch counter is reset to 0.
+
 ## Client <-> Game Server Authentication
 
 Establishing a secure connection between client and the game server
@@ -211,23 +226,24 @@ as well as authenticating the client to the game server is done using the series
 of steps detailed below.
 
 1. The client fetches the game server JWKS and picks the newest public key.
-2. The client issues a JWT of type 1 using the the username, passkey and game server public key.
-3. The client opens an unsecurede connection with the game server sends the
-   JWT to the game server bundled with the key id of the game server
-   public key, the id of the auth server public key and the randomly generated IV and salt provided
-   by the auth server during JWT issuance.
-4. The game server fetches the JWKS from the authentication server and finds the public key used to
+2. The client generates an ephemeral asymmetric keypair using a CSPRNG.
+3. The client issues a JWT of type 1 using it's public key, username, passkey and the game server public key.
+4. The client opens an unsecured connection with the game server and sends a message containing the following:
+   * Auth server provided IV
+   * Auth server provided salt
+   * Auth server public key ID
+   * Game server public key ID
+   * JWT
+5. The game server fetches the JWKS from the authentication server and finds the public key used to
    encrypt the JWT. If the JWKS does not contain the correct key id, the JWT is too old and must be rejected.
-5. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
-   the shared secret used to encrypt the JWT.
-6. The game server decrypts the JWT using the shared secret.
+6. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
+   the shared secret used to encrypt the JWT.\
+7. The game server decrypts the JWT using the shared secret.
    If decryption fails, abort with an invalid jwt error.
-7. The client generates an ephemeral keypair using a CSPRNG and sends the
-   public key to the game server.
 8. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
     the id of the game server keypair being used and computes a second shared secret
     using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
 9. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
-    If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
-    If it still does not contain a matching key, reset both parties to step 10.
+   If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
+   If it still does not contain a matching key, reset both parties to step 8.
 10. All future messages are now secured using AES128-GCM with the second shared secret and IV as parameters.
