@@ -243,8 +243,8 @@ of steps detailed below.
    which means the authentication attempt must be aborted.
 9. The game server responds with the id of the game server keypair being used and computes a second shared secret
    using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
-   Finally, add an entry to the UUID -> epoch table with the account ID as the key and have the epoch
-   be the current epoch of the game server keyring plus one.
+   Finally, increment the keyring epoch and add an entry to the UUID -> epoch table
+   with the account ID as the key and have the epoch be the current epoch of the keyring.
 10. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
     If the client does not have the game server public key with a matching key id, refetch the game server JWKS.
     If it still does not contain a matching key, reset both parties to step 8.
