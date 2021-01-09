@@ -76,13 +76,11 @@ Extra:
 
 ```
 {
-  iv: string,
-  salt: string
+  iv: string
 }
 ```
 
 `iv` is the base64 encoded AES128-GCM IV used for encrypting the JWT.
-`salt` is the base64 encoded 256 bit salt used for HMAC key derivation.
 
 ## Authentication Server API
 
@@ -230,7 +228,6 @@ of steps detailed below.
 3. The client issues a JWT of type 1 using it's public key, username, passkey and the game server public key.
 4. The client opens an unsecured connection with the game server and sends a message containing the following:
    * Auth server provided IV
-   * Auth server provided salt
    * Auth server public key ID
    * Game server public key ID
    * JWT
@@ -240,7 +237,7 @@ of steps detailed below.
    the shared secret used to encrypt the JWT.\
 7. The game server decrypts the JWT using the shared secret.
    If decryption fails, abort with an invalid JWT error.
-8. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
+8. The game server generates a new AES128-GCM IV and sends it to the client coupled with
     the id of the game server keypair being used and computes a second shared secret
     using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
 9. The client computes the second shared secret using `Truncate(HMAC-SHA3-256(ECDH(game_server_public, client_private), salt))`.
