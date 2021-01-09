@@ -239,7 +239,7 @@ of steps detailed below.
 6. The game server performs `Truncate(HMAC-SHA3-256(ECDH(auth_server_public, game_server_private), salt))` to find the
    the shared secret used to encrypt the JWT.\
 7. The game server decrypts the JWT using the shared secret.
-   If decryption fails, abort with an invalid jwt error.
+   If decryption fails, abort with an invalid JWT error.
 8. The game server generates a new AES128-GCM IV and a 256 bit salt, sends them to the client coupled with
     the id of the game server keypair being used and computes a second shared secret
     using `Truncate(HMAC-SHA3-256(ECDH(client_public, game_server_private), salt))`.
