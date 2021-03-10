@@ -3,8 +3,8 @@ use std::net::IpAddr;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-const MAX: usize = 15;
-const TIMEOUT: Duration = Duration::from_secs(60 * 15);
+const MAX: usize = 60;
+const TIMEOUT: Duration = Duration::from_secs(60 * 10);
 
 pub struct RateLimiter {
     limits: Mutex<HashMap<IpAddr, Vec<Instant>>>,
