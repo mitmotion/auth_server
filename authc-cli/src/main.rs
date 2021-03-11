@@ -1,4 +1,4 @@
-use authc::{AuthClient, AuthToken, Authority};
+use authc::{AuthClient, AuthToken, Authority, Scheme};
 use clap::{load_yaml, App};
 
 #[tokio::main(flavor = "current_thread")]
@@ -65,12 +65,18 @@ async fn main() {
 fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
     use std::str::FromStr;
 
-    match args.value_of("auth") {
-        Some(server) => {
-            AuthClient::new(Authority::from_str(server).expect("Invalid auth server url!"))
-        }
-        _ => AuthClient::new(Authority::from_str("auth.veloren.net").unwrap()), // Always valid url
-    }
+    let authority = Authority::from_str(match args.value_of("auth") {
+        Some(server) => server,
+        _ => "auth.veloren.net",
+    })
+    .expect("Invalid auth server url!");
+
+    let scheme = match args.value_of("scheme") {
+        Some(scheme) => Scheme::from_str(scheme).expect("invalid scheme"),
+        _ => Scheme::HTTPS,
+    };
+
+    AuthClient::new(scheme, authority).expect("Insecure URL")
 }
 
 fn get_arg<T: std::fmt::Display>(args: &clap::ArgMatches, arg: T, error_msg: T) -> String

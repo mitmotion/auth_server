@@ -5,6 +5,7 @@ use auth_common::{
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
 pub use http::uri::Authority;
+pub use http::uri::Scheme;
 use http::Request;
 use hyper::{body::to_bytes, client, Body, Uri};
 pub use uuid::Uuid;
@@ -22,6 +23,7 @@ pub enum AuthClientError {
     ServerError(u16, Vec<u8>),
     RequestError(hyper::Error),
     JsonError(serde_json::Error),
+    InsecureSchema,
 }
 pub struct AuthClient {
     client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>,
@@ -34,31 +36,40 @@ pub struct AuthClient {
 }
 
 impl AuthClient {
-    pub fn new(authority: Authority) -> Self {
+    pub fn new(scheme: Scheme, authority: Authority) -> Result<Self, AuthClientError> {
         let https = hyper_rustls::HttpsConnector::with_native_roots();
         let client: client::Client<_, Body> = client::Client::builder().build(https);
 
-        Self::with_client(authority, client)
+        Self::with_client(scheme, authority, client)
     }
 
     pub fn with_client(
+        scheme: Scheme,
         authority: Authority,
         client: client::Client<hyper_rustls::HttpsConnector<hyper::client::HttpConnector>, Body>,
-    ) -> Self {
-        let register_uri = Self::get_uri(&authority, "/register");
-        let username_to_uuid_uri = Self::get_uri(&authority, "/username_to_uuid");
-        let uuid_to_username_uri = Self::get_uri(&authority, "/uuid_to_username");
-        let generate_token_uri = Self::get_uri(&authority, "/generate_token");
-        let verify_uri = Self::get_uri(&authority, "/verify");
+    ) -> Result<Self, AuthClientError> {
+        // enforce HTTPS except `localhost` and/or `debug` build
+        #[cfg(not(debug_assertions))]
+        {
+            if scheme == Scheme::HTTP && authority.host() != "localhost" {
+                return Err(AuthClientError::InsecureSchema);
+            }
+        }
 
-        Self {
+        let register_uri = Self::get_uri(&scheme, &authority, "/register");
+        let username_to_uuid_uri = Self::get_uri(&scheme, &authority, "/username_to_uuid");
+        let uuid_to_username_uri = Self::get_uri(&scheme, &authority, "/uuid_to_username");
+        let generate_token_uri = Self::get_uri(&scheme, &authority, "/generate_token");
+        let verify_uri = Self::get_uri(&scheme, &authority, "/verify");
+
+        Ok(Self {
             client,
             register_uri,
             username_to_uuid_uri,
             uuid_to_username_uri,
             generate_token_uri,
             verify_uri,
-        }
+        })
     }
 
     async fn post<T>(
@@ -90,9 +101,9 @@ impl AuthClient {
         Ok(())
     }
 
-    fn get_uri(authority: &Authority, path: &'static str) -> Uri {
+    fn get_uri(scheme: &Scheme, authority: &Authority, path: &'static str) -> Uri {
         Uri::builder()
-            .scheme(http::uri::Scheme::HTTPS)
+            .scheme(scheme.clone())
             .authority(authority.clone())
             .path_and_query(http::uri::PathAndQuery::from_static(path))
             .build()
@@ -171,6 +182,7 @@ impl std::fmt::Display for AuthClientError {
             }
             AuthClientError::RequestError(text) => write!(f, "Request failed with: {}", text),
             AuthClientError::JsonError(text) => write!(f, "Failed to convert Json with: {}", text),
+            AuthClientError::InsecureSchema => write!(f, "Using auth with `HTTP` is insecure. It's only allowed to use HTTP if the authority is `localhost` or when debug_assertions are set"),
         }
     }
 }
