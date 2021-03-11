@@ -20,6 +20,14 @@ subcommands:
                 short: t
                 long: auth
                 takes_value: true
+            - scheme:
+                help: The Auth server scheme to use.
+                required: false
+                long: scheme
+                takes_value: true
+                possible_values:
+                    - http
+                    - https
     - login:
         about: Receive one time token to join a gameserver.
         args:
@@ -37,6 +45,14 @@ subcommands:
                 short: t
                 long: auth
                 takes_value: true
+            - scheme:
+                help: The Auth server scheme to use.
+                required: false
+                long: scheme
+                takes_value: true
+                possible_values:
+                  - http
+                  - https
     - uuid:
         about: Retrieve the uuid of a user.
         args:
@@ -50,6 +66,14 @@ subcommands:
                 short: t
                 long: auth
                 takes_value: true
+            - scheme:
+                help: The Auth server scheme to use.
+                required: false
+                long: scheme
+                takes_value: true
+                possible_values:
+                    - http
+                    - https
     - validate:
         about: validate the auth token (one time usage).
         args:
@@ -63,3 +87,11 @@ subcommands:
                 short: t
                 long: auth
                 takes_value: true
+            - scheme:
+                help: The Auth server scheme to use.
+                required: false
+                long: scheme
+                takes_value: true
+                possible_values:
+                    - http
+                    - https
