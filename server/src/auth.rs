@@ -6,8 +6,8 @@ use rusqlite::{params, Connection, Error as DbError, NO_PARAMS};
 use serde_json::Error as JsonError;
 use std::error::Error;
 use std::fmt;
-use uuid::Uuid;
 use std::{env, path::PathBuf};
+use uuid::Uuid;
 
 lazy_static! {
     static ref TOKENS: TimedCache = TimedCache::new();
@@ -20,7 +20,7 @@ fn apply_db_dir_override(db_dir: &str) -> String {
             // Only allow paths with valid unicode characters
             match path.to_str() {
                 Some(path) => return path.to_owned(),
-                None => {},
+                None => {}
             }
         }
         log::warn!("AUTH_DB_DIR is an invalid path.");
