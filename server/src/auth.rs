@@ -2,7 +2,7 @@ use crate::cache::TimedCache;
 use argon2::Error as HashError;
 use auth_common::AuthToken;
 use lazy_static::lazy_static;
-use rusqlite::{params, Connection, Error as DbError, NO_PARAMS};
+use rusqlite::{params, Connection, Error as DbError};
 use serde_json::Error as JsonError;
 use std::error::Error;
 use std::fmt;
@@ -123,7 +123,7 @@ pub fn init_db() -> Result<(), AuthError> {
             pwhash TEXT NOT NULL
         )
     ",
-        NO_PARAMS,
+        [],
     )?;
     Ok(())
 }
