@@ -51,19 +51,24 @@ impl AuthClient {
         // enforce HTTPS except `localhost` and/or `debug` build
         #[cfg(not(debug_assertions))]
         {
-            if base.scheme() == "http" {
-                match base.host() {
-                    Some(url::Host::Domain("localhost")) => (),
-                    _ => return Err(AuthClientError::InsecureSchema),
-                }
+            if base.scheme() == "http"
+                && !matches!(base.host(), Some(url::Host::Domain("localhost")))
+            {
+                return Err(AuthClientError::InsecureSchema);
             }
         }
 
-        let register_uri = Self::get_uri(&base, "/register");
-        let username_to_uuid_uri = Self::get_uri(&base, "/username_to_uuid");
-        let uuid_to_username_uri = Self::get_uri(&base, "/uuid_to_username");
-        let generate_token_uri = Self::get_uri(&base, "/generate_token");
-        let verify_uri = Self::get_uri(&base, "/verify");
+        let build_uri = |host: &Url, path: &'static str| {
+            let mut url = host.clone();
+            url.set_path(path);
+            url
+        };
+
+        let register_uri = build_uri(&base, "/register");
+        let username_to_uuid_uri = build_uri(&base, "/username_to_uuid");
+        let uuid_to_username_uri = build_uri(&base, "/uuid_to_username");
+        let generate_token_uri = build_uri(&base, "/generate_token");
+        let verify_uri = build_uri(&base, "/verify");
 
         Ok(Self {
             client,
@@ -75,7 +80,7 @@ impl AuthClient {
         })
     }
 
-    async fn post<T>(&self, url: &Url, data: T) -> std::result::Result<Response, AuthClientError>
+    async fn post<T>(&self, url: &Url, data: T) -> Result<Response, AuthClientError>
     where
         T: serde::ser::Serialize,
     {
@@ -95,12 +100,6 @@ impl AuthClient {
         };
         self.post(&self.register_uri, data).await?;
         Ok(())
-    }
-
-    fn get_uri(host: &Url, path: &'static str) -> Url {
-        let mut url = host.clone();
-        url.set_path(path);
-        url
     }
 
     pub async fn username_to_uuid(
