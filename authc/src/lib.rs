@@ -18,7 +18,7 @@ fn net_prehash(password: &str) -> String {
 #[derive(Debug)]
 pub enum AuthClientError {
     // Server did not return 200-299 StatusCode.
-    ServerError(u16, Vec<u8>),
+    ServerError(u16, String),
     RequestError(reqwest::Error),
     JsonError(serde_json::Error),
     InvalidUrl(url::ParseError),
@@ -41,6 +41,7 @@ impl AuthClient {
         Self::with_client(scheme, schema, client)
     }
 
+    /// Note: throws an error when scheme isn't HTTPS except `localhost` and/or `debug` build. HTTP is insecure!
     pub fn with_client(
         scheme: &str,
         schema: &str,
@@ -48,7 +49,6 @@ impl AuthClient {
     ) -> Result<Self, AuthClientError> {
         let base = Url::parse(&format!("{}://{}", scheme, schema))?;
 
-        // enforce HTTPS except `localhost` and/or `debug` build
         #[cfg(not(debug_assertions))]
         {
             if base.scheme() == "http"
@@ -153,15 +153,13 @@ where
     T: serde::Serialize + serde::de::DeserializeOwned,
 {
     let status = resp.status();
-    let bytes = resp.bytes().await?;
 
     if status.is_success() {
+        let bytes = resp.bytes().await?;
         Ok(serde_json::from_slice(&bytes)?)
     } else {
-        Err(AuthClientError::ServerError(
-            status.as_u16(),
-            bytes.to_vec(),
-        ))
+        let text = resp.text().await?;
+        Err(AuthClientError::ServerError(status.as_u16(), text))
     }
 }
 
@@ -169,7 +167,7 @@ impl std::fmt::Display for AuthClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             AuthClientError::ServerError(code, text) => {
-                write!(f, "Auth Server returned {} with: {:?}", code, text)
+                write!(f, "Auth Server returned {} with: {}", code, text)
             }
             AuthClientError::RequestError(text) => write!(f, "Request failed with: {}", text),
             AuthClientError::JsonError(text) => write!(f, "Failed to convert Json with: {}", text),
