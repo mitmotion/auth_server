@@ -12,7 +12,6 @@ variables:
   GIT_CLEAN_FLAGS: -f
 
 default:
-  image: registry.gitlab.com/veloren/veloren-docker-ci:base
   # https://docs.gitlab.com/ee/ci/pipelines/settings.html#auto-cancel-pending-pipelines
   interruptible: true
   # Retry automatically incase the runner times out or there's a runner failure
@@ -21,6 +20,8 @@ default:
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
+  tags:
+    - veloren/*
 
 before_script:
   - source $HOME/.cargo/env
