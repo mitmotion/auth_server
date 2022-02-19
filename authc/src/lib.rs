@@ -4,6 +4,7 @@ use auth_common::{
     RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
     UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
 };
+pub use reqwest::Certificate;
 pub use reqwest::Url;
 use reqwest::{Client, Response};
 pub use uuid::Uuid;
@@ -41,6 +42,16 @@ impl AuthClient {
         Self::with_client(scheme, schema, client)
     }
 
+    pub fn with_certificate(
+        scheme: &str,
+        schema: &str,
+        cert: Certificate,
+    ) -> Result<Self, AuthClientError> {
+        let client = Client::builder().add_root_certificate(cert).build()?;
+
+        Self::with_client(scheme, schema, client)
+    }
+
     /// Note: throws an error when scheme isn't HTTPS except `localhost` and/or `debug` build. HTTP is insecure!
     pub fn with_client(
         scheme: &str,
@@ -49,13 +60,9 @@ impl AuthClient {
     ) -> Result<Self, AuthClientError> {
         let base = Url::parse(&format!("{}://{}", scheme, schema))?;
 
-        #[cfg(not(debug_assertions))]
+        if base.scheme() != "https" && !matches!(base.host(), Some(url::Host::Domain("localhost")))
         {
-            if base.scheme() == "http"
-                && !matches!(base.host(), Some(url::Host::Domain("localhost")))
-            {
-                return Err(AuthClientError::InsecureSchema);
-            }
+            return Err(AuthClientError::InsecureSchema);
         }
 
         let build_uri = |host: &Url, path: &'static str| {

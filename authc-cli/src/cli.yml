@@ -28,6 +28,11 @@ subcommands:
                 possible_values:
                     - http
                     - https
+            - cert:
+                help: File containing a PEM encoded custom root certificate to trust (useful for local testing with a self-signed certificate).
+                required: false
+                long: cert
+                takes_value: true
     - login:
         about: Receive one time token to join a gameserver.
         args:
@@ -51,8 +56,13 @@ subcommands:
                 long: scheme
                 takes_value: true
                 possible_values:
-                  - http
-                  - https
+                    - http
+                    - https
+            - cert:
+                help: File containing a PEM encoded custom root certificate to trust (useful for local testing with a self-signed certificate).
+                required: false
+                long: cert
+                takes_value: true
     - uuid:
         about: Retrieve the uuid of a user.
         args:
@@ -74,6 +84,11 @@ subcommands:
                 possible_values:
                     - http
                     - https
+            - cert:
+                help: File containing a PEM encoded custom root certificate to trust (useful for local testing with a self-signed certificate).
+                required: false
+                long: cert
+                takes_value: true
     - validate:
         about: validate the auth token (one time usage).
         args:
@@ -95,3 +110,8 @@ subcommands:
                 possible_values:
                     - http
                     - https
+            - cert:
+                help: File containing a PEM encoded custom root certificate to trust (useful for local testing with a self-signed certificate).
+                required: false
+                long: cert
+                takes_value: true

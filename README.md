@@ -22,4 +22,11 @@ For a deployment-ready server, you can build docker image using `./build-server-
 A docker compose file is also provided to provide the auth server as a service. You'll need docker-compose for that.
 
 #### Deployment notice
- To keep your data secured, it is essential to setup the server to be connected to through a public network run behind a TLS terminator such as nginx
+To keep your data secured, it is essential to setup the server to be connected to through a public network run behind a TLS terminator such as nginx
+
+#### Running test auth server on a local network
+For security, the auth client will refuse to attempt to connections without https unless the server is `localhost`.
+
+For testing, a local TLS terminator with a self-signed certificate can be used:
+
+TODO

@@ -11,7 +11,7 @@ async fn main() {
         ("register", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
             let password = get_arg(&args, "password", "Please specify the password.");
-            let auth = set_auth_server(&args);
+            let auth = set_auth_server(&args).await;
 
             if let Err(e) = auth.register(&username, &password).await {
                 exit_with(format!("Register failed with: {}", e));
@@ -21,7 +21,7 @@ async fn main() {
         ("login", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
             let password = get_arg(&args, "password", "Please specify the password.");
-            let auth = set_auth_server(&args);
+            let auth = set_auth_server(&args).await;
 
             match auth.sign_in(&username, &password).await {
                 Ok(token) => {
@@ -32,7 +32,7 @@ async fn main() {
         }
         ("uuid", Some(args)) => {
             let username = get_arg(&args, "username", "Please specify the username.");
-            let auth = set_auth_server(&args);
+            let auth = set_auth_server(&args).await;
 
             match auth.username_to_uuid(&username).await {
                 Ok(id) => {
@@ -47,7 +47,7 @@ async fn main() {
                     Ok(token) => token,
                     Err(e) => exit_with(format!("failed to parse token: {}", e)),
                 };
-            let auth = set_auth_server(&args);
+            let auth = set_auth_server(&args).await;
 
             match auth.validate(token).await {
                 Ok(id) => {
@@ -62,11 +62,25 @@ async fn main() {
     }
 }
 
-fn set_auth_server(args: &clap::ArgMatches) -> AuthClient {
+async fn set_auth_server(args: &clap::ArgMatches<'_>) -> AuthClient {
     let authority = args.value_of("auth").unwrap_or("auth.veloren.net");
     let scheme = args.value_of("scheme").unwrap_or("https");
 
-    AuthClient::new(scheme, authority).unwrap()
+    if let Some(cert_file) = args.value_of("cert") {
+        let cert_bytes = tokio::fs::read(cert_file).await.unwrap_or_else(|err| {
+            exit_with(format!(
+                "Failed to read provided certificate file {cert_file} due to error: {err:?}",
+            ));
+        });
+        let cert = authc::Certificate::from_pem(&cert_bytes).unwrap_or_else(|err| {
+            exit_with(format!("Failed to parse certificate due to error: {err:?}"));
+        });
+
+        AuthClient::with_certificate(scheme, authority, cert)
+    } else {
+        AuthClient::new(scheme, authority)
+    }
+    .unwrap()
 }
 
 fn get_arg<T: std::fmt::Display>(args: &clap::ArgMatches, arg: T, error_msg: T) -> String
