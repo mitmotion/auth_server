@@ -199,6 +199,19 @@ pub fn generate_token(username_unfiltered: &str, password: &str) -> Result<AuthT
     Ok(token)
 }
 
+pub fn delete_account(username_unfiltered: &str, password: &str) -> Result<(), AuthError> {
+    let username = decapitalize(username_unfiltered);
+    if !is_valid(&username, password)? {
+        return Err(AuthError::InvalidLogin);
+    }
+    let uuid = username_to_uuid(&username)?.to_string();
+    db()?.execute(
+        "DELETE FROM users WHERE uuid = ?1 AND username = ?2",
+        params![uuid, &username],
+    )?;
+    Ok(())
+}
+
 pub fn verify(token: AuthToken) -> Result<Uuid, AuthError> {
     let mut uuid = None;
     TOKENS.run(&token, |entry| {
