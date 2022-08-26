@@ -1,8 +1,9 @@
 use crate::auth::{self, AuthError};
 use crate::ratelimit::RateLimiter;
 use auth_common::{
-    RegisterPayload, SignInPayload, SignInResponse, DeleteAccountPayload, DeleteAccountResponse, UsernameLookupPayload, UsernameLookupResponse,
-    UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
+    DeleteAccountPayload, DeleteAccountResponse, RegisterPayload, SignInPayload, SignInResponse,
+    UsernameLookupPayload, UsernameLookupResponse, UuidLookupPayload, UuidLookupResponse,
+    ValidityCheckPayload, ValidityCheckResponse,
 };
 use lazy_static::lazy_static;
 use log::*;
