@@ -54,6 +54,15 @@ pub struct SignInResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteAccountPayload {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteAccountResponse {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidityCheckPayload {
     pub token: AuthToken,
 }

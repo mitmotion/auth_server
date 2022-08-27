@@ -1,8 +1,9 @@
 use crate::auth::{self, AuthError};
 use crate::ratelimit::RateLimiter;
 use auth_common::{
-    RegisterPayload, SignInPayload, SignInResponse, UsernameLookupPayload, UsernameLookupResponse,
-    UuidLookupPayload, UuidLookupResponse, ValidityCheckPayload, ValidityCheckResponse,
+    DeleteAccountPayload, DeleteAccountResponse, RegisterPayload, SignInPayload, SignInResponse,
+    UsernameLookupPayload, UsernameLookupResponse, UuidLookupPayload, UuidLookupResponse,
+    ValidityCheckPayload, ValidityCheckResponse,
 };
 use lazy_static::lazy_static;
 use log::*;
@@ -85,6 +86,15 @@ fn generate_token(req: &Request) -> Result<Response, AuthError> {
     Ok(Response::json(&response))
 }
 
+fn delete_account(req: &Request) -> Result<Response, AuthError> {
+    let body = req.data().unwrap();
+    let payload: DeleteAccountPayload = serde_json::from_reader(body)?;
+    verify_username(&payload.username)?;
+    auth::delete_account(&payload.username, &payload.password)?;
+    let response = DeleteAccountResponse {};
+    Ok(Response::json(&response))
+}
+
 fn verify(req: &Request) -> Result<Response, AuthError> {
     let body = req.data().unwrap();
     let payload: ValidityCheckPayload = serde_json::from_reader(body)?;
@@ -110,6 +120,7 @@ pub fn start() {
                     "/uuid_to_username" => uuid_to_username(request),
                     "/register" => ratelimit(request, register),
                     "/generate_token" => ratelimit(request, generate_token),
+                    "/delete_account" => ratelimit(request, delete_account),
                     "/verify" => verify(request),
                     _ => Ok(Response::empty_404()),
                 };

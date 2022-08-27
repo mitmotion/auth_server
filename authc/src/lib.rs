@@ -48,10 +48,7 @@ impl AuthClient {
         Ok(())
     }
 
-    pub fn username_to_uuid(
-        &self,
-        username: impl AsRef<str>,
-    ) -> Result<Uuid, AuthClientError> {
+    pub fn username_to_uuid(&self, username: impl AsRef<str>) -> Result<Uuid, AuthClientError> {
         let data = UuidLookupPayload {
             username: username.as_ref().to_owned(),
         };
@@ -66,8 +63,7 @@ impl AuthClient {
         let ep = self.provider.join("uuid_to_username")?;
         let resp = self.client.post(ep).json(&data).send()?;
 
-        Ok(handle_response::<UsernameLookupResponse>(resp)?
-            .username)
+        Ok(handle_response::<UsernameLookupResponse>(resp)?.username)
     }
 
     pub fn sign_in(
